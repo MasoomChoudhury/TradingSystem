@@ -1,0 +1,13 @@
+pandas
+pandas_ta
+mplfinance
+matplotlib
+langchain
+langchain-google-genai
+langgraph
+fastapi
+uvicorn
+httpx
+apscheduler
+openalgo
+python-dotenv

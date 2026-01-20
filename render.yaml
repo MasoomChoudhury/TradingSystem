@@ -1,0 +1,27 @@
+# Render Blueprint - TradingSystem Backend Only
+# OpenAlgo is deployed separately from: https://github.com/marketcalls/openalgo
+
+services:
+  # Trading Agents Backend
+  - type: web
+    name: trading-agents
+    runtime: python
+    region: singapore
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    rootDir: backend
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.0"
+      - key: PORT
+        value: "8000"
+      # Set this to your OpenAlgo Render URL after deploying OpenAlgo
+      - key: OPENALGO_HOST
+        sync: false
+      - key: OPENALGO_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+    healthCheckPath: /api/health
+    autoDeploy: true

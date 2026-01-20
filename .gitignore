@@ -1,0 +1,62 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Build outputs
+.next/
+out/
+dist/
+build/
+
+# Tauri (large Rust builds)
+src-tauri/target/
+
+# Environment files (add to Render dashboard instead)
+.env
+.env.local
+*.env
+
+# IDE
+.vscode/
+.idea/
+.gemini/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+log/
+logs/
+
+# Database files (ephemeral on Render anyway)
+*.db
+*.sqlite
+
+# Large/temporary files
+*.zip
+*.tar.gz
+tmp/
+temp/
+
+# Python
+*.egg-info/
+.eggs/
+langchain_core/
+
+# Frontend specific
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/src-tauri/target/
+
+# Backend specific
+backend/venv/
+backend/__pycache__/
+backend/*.db
+backend/langchain_core/
+

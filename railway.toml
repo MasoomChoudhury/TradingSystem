@@ -1,0 +1,38 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "backend/Dockerfile"
+watchPatterns = ["backend/**"]
+
+[[services]]
+name = "trading-agents"
+numReplicas = 1
+internalPort = 8000
+rootDirectory = "backend"
+
+[services.healthcheck]
+path = "/api/health"
+interval = 30
+timeout = 5
+
+[[services.envVars]]
+name = "OPENALGO_API_KEY"
+value = "${{OPENALGO_API_KEY}}"
+
+[[services.envVars]]
+name = "OPENALGO_HOST"
+value = "http://127.0.0.1:5000"
+
+[[services.envVars]]
+name = "GEMINI_API_KEY"
+value = "${{GEMINI_API_KEY}}"
+
+[[services.envVars]]
+name = "DATA_DIR"
+value = "/data"
+
+[deploy]
+numReplicas = 1
+healthcheckPath = "/api/health"
+sleepApplication = false
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
