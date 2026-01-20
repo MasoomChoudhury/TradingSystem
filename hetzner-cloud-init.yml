@@ -1,0 +1,134 @@
+#cloud-config
+# TradingSystem + OpenAlgo - Hetzner Cloud-Init
+# Paste this in User Data when creating Hetzner server
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - docker.io
+  - docker-compose
+  - git
+  - python3.12
+  - python3.12-venv
+  - python3-pip
+  - nginx
+  - certbot
+  - python3-certbot-nginx
+
+write_files:
+  # Docker Compose file
+  - path: /opt/trading/docker-compose.yml
+    content: |
+      version: '3.8'
+      services:
+        openalgo:
+          image: python:3.12-slim
+          container_name: openalgo
+          working_dir: /app
+          volumes:
+            - ./openalgo:/app
+            - openalgo_data:/app/db
+          ports:
+            - "5000:5000"
+          environment:
+            - TZ=Asia/Kolkata
+          command: bash -c "pip install -r requirements.txt && python app.py"
+          restart: unless-stopped
+          
+        trading-agents:
+          image: python:3.12-slim
+          container_name: trading-agents
+          working_dir: /app
+          volumes:
+            - ./backend:/app
+          ports:
+            - "8000:8000"
+          environment:
+            - OPENALGO_HOST=http://openalgo:5000
+            - OPENALGO_API_KEY=${OPENALGO_API_KEY}
+            - GEMINI_API_KEY=${GEMINI_API_KEY}
+            - TZ=Asia/Kolkata
+          depends_on:
+            - openalgo
+          command: bash -c "pip install -r requirements.txt && python main.py"
+          restart: unless-stopped
+          
+      volumes:
+        openalgo_data:
+
+  # Environment file template
+  - path: /opt/trading/.env
+    content: |
+      # FILL THESE VALUES
+      OPENALGO_API_KEY=your_openalgo_api_key
+      GEMINI_API_KEY=your_gemini_api_key
+      
+      # Broker credentials (for OpenAlgo)
+      BROKER_API_KEY=your_broker_key
+      BROKER_API_SECRET=your_broker_secret
+
+  # Nginx config
+  - path: /etc/nginx/sites-available/trading
+    content: |
+      server {
+          listen 80;
+          server_name _;
+          
+          location /api/ {
+              proxy_pass http://127.0.0.1:8000;
+              proxy_http_version 1.1;
+              proxy_set_header Upgrade $http_upgrade;
+              proxy_set_header Connection "upgrade";
+              proxy_set_header Host $host;
+          }
+          
+          location /openalgo/ {
+              proxy_pass http://127.0.0.1:5000/;
+              proxy_set_header Host $host;
+          }
+      }
+
+  # Startup script
+  - path: /opt/trading/start.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      cd /opt/trading
+      docker-compose up -d
+      echo "Services started!"
+      docker-compose ps
+
+runcmd:
+  # Enable Docker
+  - systemctl enable docker
+  - systemctl start docker
+  
+  # Create trading directory
+  - mkdir -p /opt/trading
+  - cd /opt/trading
+  
+  # Clone repos
+  - git clone https://github.com/MasoomChoudhury/TradingSystem.git /opt/trading/TradingSystem
+  - git clone https://github.com/marketcalls/openalgo.git /opt/trading/openalgo
+  
+  # Move backend to right place
+  - mv /opt/trading/TradingSystem/backend /opt/trading/backend
+  
+  # Setup Nginx
+  - ln -sf /etc/nginx/sites-available/trading /etc/nginx/sites-enabled/
+  - rm -f /etc/nginx/sites-enabled/default
+  - systemctl reload nginx
+  
+  # Print instructions
+  - echo "========================================="
+  - echo "SETUP COMPLETE!"
+  - echo "========================================="
+  - echo "1. Edit /opt/trading/.env with your API keys"
+  - echo "2. Edit /opt/trading/openalgo/.env with broker credentials"
+  - echo "3. Run: cd /opt/trading && docker-compose up -d"
+  - echo "========================================="
+  - echo "Access:"
+  - echo "  Trading API: http://YOUR_IP:8000"
+  - echo "  OpenAlgo: http://YOUR_IP:5000"
+  - echo "========================================="
