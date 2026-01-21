@@ -259,7 +259,12 @@ from tools import openalgo_analyzer_status, openalgo_analyzer_toggle
 @app.get("/api/openalgo/analyzer-status")
 async def get_analyzer_status():
     """Get current analyzer mode status."""
-    return openalgo_analyzer_status()
+    try:
+        # openalgo_analyzer_status is a StructuredTool, need to invoke it
+        result = openalgo_analyzer_status.invoke({})
+        return {"status": "success", "data": result}
+    except Exception as e:
+        return {"status": "error", "message": str(e), "data": {"analyze_mode": False}}
 
 # ==================== MARKET ANALYST (TRADING EYES) ====================
 from market_analyst import market_analyst

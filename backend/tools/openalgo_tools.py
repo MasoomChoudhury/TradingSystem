@@ -27,16 +27,12 @@ def get_openalgo_client():
             
             api_key = os.environ.get("OPENALGO_API_KEY", "")
             host = os.environ.get("OPENALGO_HOST", "http://127.0.0.1:5000")
-            ws_url = os.environ.get("OPENALGO_WS_URL", "ws://127.0.0.1:8765")
-            verbose = int(os.environ.get("OPENALGO_VERBOSE", "1"))
             
             _openalgo_client = api(
                 api_key=api_key,
-                host=host,
-                ws_url=ws_url,
-                verbose=verbose
+                host=host
             )
-            logger.info(f"OpenAlgo client initialized. Host: {host}, WS: {ws_url}")
+            logger.info(f"OpenAlgo client initialized. Host: {host}")
         except ImportError:
             logger.error("OpenAlgo library not installed. Run: pip install openalgo")
             raise
