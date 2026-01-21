@@ -125,10 +125,18 @@ done
 
 # Get OpenAlgo URL
 log "\n=== OpenAlgo Configuration ===" "$YELLOW"
-read -p "Enter your OpenAlgo URL (e.g., https://openalgo.yourdomain.com): " OPENALGO_URL
-if [ -z "$OPENALGO_URL" ]; then
-    log "Warning: No OpenAlgo URL provided. You'll need to set this later." "$YELLOW"
-    OPENALGO_URL="http://localhost:5000"
+log "If OpenAlgo is running on THIS same server, the agents will connect via localhost:5000" "$BLUE"
+log "This is more secure and faster than going through the public domain." "$BLUE"
+read -p "Is OpenAlgo running on this same server? (y/n): " openalgo_same_server
+if [[ $openalgo_same_server =~ ^[Yy]$ ]]; then
+    OPENALGO_URL="http://127.0.0.1:5000"
+    log "Using internal connection: $OPENALGO_URL" "$GREEN"
+else
+    read -p "Enter your OpenAlgo URL (e.g., https://openalgo.yourdomain.com): " OPENALGO_URL
+    if [ -z "$OPENALGO_URL" ]; then
+        log "Warning: No OpenAlgo URL provided. You'll need to set this later." "$YELLOW"
+        OPENALGO_URL="http://localhost:5000"
+    fi
 fi
 
 # Get OpenAlgo API Key
@@ -418,14 +426,17 @@ EOF
 
 check_status "Docker Compose configuration failed"
 
-# Configure firewall
+# Configure firewall (matching OpenAlgo pattern)
 log "\n=== Configuring Firewall ===" "$BLUE"
+log "Ports 8000/3000 will only be accessible via localhost (through nginx)" "$BLUE"
 $SUDO ufw --force enable
 $SUDO ufw default deny incoming
 $SUDO ufw default allow outgoing
 $SUDO ufw allow ssh
-$SUDO ufw allow 80/tcp
-$SUDO ufw allow 443/tcp
+$SUDO ufw allow 80/tcp    # HTTP (for SSL renewal and redirect)
+$SUDO ufw allow 443/tcp   # HTTPS (main access via nginx)
+# Note: Ports 8000 (backend) and 3000 (frontend) are NOT opened
+# They are bound to 127.0.0.1 and only accessible through nginx reverse proxy
 check_status "Firewall configuration failed"
 
 # Initial Nginx configuration (for Certbot)
