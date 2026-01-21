@@ -497,8 +497,8 @@ log "\n=== Configuring Nginx (Production with SSL) ===" "$BLUE"
 
 # API Nginx config (Production)
 $SUDO tee /etc/nginx/sites-available/$API_DOMAIN > /dev/null << EOF
-# Rate limiting
-limit_req_zone \$binary_remote_addr zone=api_limit:10m rate=50r/s;
+# Rate limiting (unique name to avoid conflict with OpenAlgo)
+limit_req_zone \$binary_remote_addr zone=trading_api_limit:10m rate=50r/s;
 
 # Upstream
 upstream trading_agents {
@@ -575,7 +575,7 @@ server {
 
     # API Endpoints
     location / {
-        limit_req zone=api_limit burst=100 nodelay;
+        limit_req zone=trading_api_limit burst=100 nodelay;
         limit_req_status 429;
         
         # Handle preflight
