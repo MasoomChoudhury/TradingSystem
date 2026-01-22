@@ -1,4 +1,5 @@
 "use client";
+import { API_BASE_URL } from '../config';
 import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -60,7 +61,7 @@ const SupervisorPanel: React.FC = () => {
         setIsLoading(true);
 
         try {
-            const response = await fetch('http://127.0.0.1:8000/api/supervisor/chat', {
+            const response = await fetch(`${API_BASE_URL}/api/supervisor/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: input }),

@@ -1,4 +1,5 @@
 "use client";
+import { API_BASE_URL } from '../config';
 import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -51,7 +52,7 @@ const ExecutorPanel: React.FC = () => {
 
     const fetchStatus = async () => {
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/executor/status');
+            const res = await fetch(`${API_BASE_URL}/api/executor/status`);
             const data = await res.json();
             setStatus(data);
         } catch (e) {
@@ -80,7 +81,7 @@ const ExecutorPanel: React.FC = () => {
     const sendCommand = async (command: string) => {
         setIsLoading(true);
         try {
-            const response = await fetch('http://127.0.0.1:8000/api/executor/command', {
+            const response = await fetch(`${API_BASE_URL}/api/executor/command`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ command, strategy_name: "", levels: null, execution_params: null }),
@@ -106,7 +107,7 @@ const ExecutorPanel: React.FC = () => {
         setIsLoading(true);
 
         try {
-            const response = await fetch('http://127.0.0.1:8000/api/executor/chat', {
+            const response = await fetch(`${API_BASE_URL}/api/executor/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: input }),

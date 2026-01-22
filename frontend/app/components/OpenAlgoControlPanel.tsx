@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { API_BASE_URL } from "../config";
 
 interface OpenAlgoStatus {
     connected: boolean;
@@ -40,7 +41,7 @@ export default function OpenAlgoControlPanel() {
 
     const fetchStatus = async () => {
         try {
-            const res = await fetch("http://127.0.0.1:8000/api/openalgo/status");
+            const res = await fetch(`${API_BASE_URL}/api/openalgo/status`);
             if (res.ok) {
                 const data = await res.json();
                 setStatus(data);
@@ -52,7 +53,7 @@ export default function OpenAlgoControlPanel() {
 
     const fetchAnalyzerStatus = async () => {
         try {
-            const res = await fetch("http://127.0.0.1:8000/api/openalgo/analyzer-status");
+            const res = await fetch(`${API_BASE_URL}/api/openalgo/analyzer-status`);
             if (res.ok) {
                 const data = await res.json();
                 setAnalyzerStatus(data);
@@ -67,7 +68,7 @@ export default function OpenAlgoControlPanel() {
         setIsToggling(true);
         try {
             const newMode = !isLiveMode; // true = analyze, false = live
-            const res = await fetch(`http://127.0.0.1:8000/api/openalgo/analyzer-toggle?mode=${!newMode}`, {
+            const res = await fetch(`${API_BASE_URL}/api/openalgo/analyzer-toggle?mode=${!newMode}`, {
                 method: "POST"
             });
             if (res.ok) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { API_BASE_URL, WS_BASE_URL } from "../config";
 
 // API Request Log Entry
 interface APILogEntry {
@@ -35,7 +36,7 @@ export default function APILogPanel() {
     useEffect(() => {
         const fetchWsLogs = async () => {
             try {
-                const res = await fetch("http://127.0.0.1:8000/api/openalgo/ws-logs?limit=50");
+                const res = await fetch(`${API_BASE_URL}/api/openalgo/ws-logs?limit=50`);
                 if (res.ok) {
                     const data = await res.json();
                     setWsLogs(data.logs || []);
@@ -53,7 +54,7 @@ export default function APILogPanel() {
 
     // Subscribe to API logs from backend WebSocket
     useEffect(() => {
-        const ws = new WebSocket("ws://127.0.0.1:8000/ws/api-logs");
+        const ws = new WebSocket(`${WS_BASE_URL}/ws/api-logs`);
 
         ws.onmessage = (event) => {
             try {
@@ -75,7 +76,7 @@ export default function APILogPanel() {
             setApiLogs([]);
         } else {
             try {
-                await fetch("http://127.0.0.1:8000/api/openalgo/ws-logs", { method: "DELETE" });
+                await fetch(`${API_BASE_URL}/api/openalgo/ws-logs`, { method: "DELETE" });
                 setWsLogs([]);
             } catch (e) {
                 setWsLogs([]);

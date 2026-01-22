@@ -1,4 +1,5 @@
 "use client";
+import { API_BASE_URL } from '../config';
 import React, { useState, useEffect } from 'react';
 import { Eye, RefreshCw, TrendingUp, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -11,12 +12,12 @@ const AnalystPanel: React.FC = () => {
     const fetchLatestAnalysis = async () => {
         setIsLoading(true);
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/analyst/latest');
+            const res = await fetch(`${API_BASE_URL}/api/analyst/latest`);
             const data = await res.json();
             setAnalysis(data);
             if (data.has_chart) {
                 // Force refresh image by appending timestamp
-                setChartUrl(`http://127.0.0.1:8000/api/analyst/chart?t=${Date.now()}`);
+                setChartUrl(`${API_BASE_URL}/api/analyst/chart?t=${Date.now()}`);
             }
         } catch (e) {
             console.error("Failed to fetch analyst data", e);
@@ -28,7 +29,7 @@ const AnalystPanel: React.FC = () => {
     const triggerAnalysis = async () => {
         setIsLoading(true);
         try {
-            await fetch('http://127.0.0.1:8000/api/analyst/run', { method: 'POST' });
+            await fetch(`${API_BASE_URL}/api/analyst/run`, { method: 'POST' });
             // Poll for result after a few seconds
             setTimeout(fetchLatestAnalysis, 5000);
         } catch (e) {

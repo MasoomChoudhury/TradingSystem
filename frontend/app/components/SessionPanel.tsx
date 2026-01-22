@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { Play, Pause, RefreshCw, ArrowRightLeft, Square, TrendingUp, TrendingDown, FileText } from 'lucide-react';
+import { API_BASE_URL } from '../config';
 
 interface SessionData {
     state: string;
@@ -30,7 +31,7 @@ const SessionPanel: React.FC = () => {
 
     const fetchStatus = async () => {
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/session/status');
+            const res = await fetch(`${API_BASE_URL}/api/session/status`);
             const data = await res.json();
             setSession(data);
         } catch (e) {
@@ -48,7 +49,7 @@ const SessionPanel: React.FC = () => {
         if (!marketReport.trim()) return;
         setIsLoading(true);
         try {
-            const res = await fetch('http://127.0.0.1:8000/api/session/start', {
+            const res = await fetch(`${API_BASE_URL}/api/session/start`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ report: marketReport })
@@ -65,22 +66,22 @@ const SessionPanel: React.FC = () => {
     };
 
     const pauseSession = async () => {
-        await fetch('http://127.0.0.1:8000/api/session/pause', { method: 'POST' });
+        await fetch(`${API_BASE_URL}/api/session/pause`, { method: 'POST' });
         fetchStatus();
     };
 
     const resumeSession = async () => {
-        await fetch('http://127.0.0.1:8000/api/session/resume', { method: 'POST' });
+        await fetch(`${API_BASE_URL}/api/session/resume`, { method: 'POST' });
         fetchStatus();
     };
 
     const switchStrategy = async () => {
-        await fetch('http://127.0.0.1:8000/api/session/switch?reason=Manual%20switch', { method: 'POST' });
+        await fetch(`${API_BASE_URL}/api/session/switch?reason=Manual%20switch`, { method: 'POST' });
         fetchStatus();
     };
 
     const endSession = async () => {
-        await fetch('http://127.0.0.1:8000/api/session/end', { method: 'POST' });
+        await fetch(`${API_BASE_URL}/api/session/end`, { method: 'POST' });
         fetchStatus();
     };
 

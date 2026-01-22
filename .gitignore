@@ -1,62 +1,54 @@
-# Dependencies
-node_modules/
-.venv/
-venv/
-__pycache__/
-*.pyc
-
-# Build outputs
-.next/
-out/
-dist/
-build/
-
-# Tauri (large Rust builds)
-src-tauri/target/
-
-# Environment files (add to Render dashboard instead)
-.env
-.env.local
-*.env
-
-# IDE
-.vscode/
-.idea/
-.gemini/
-
-# OS
+# System
 .DS_Store
-Thumbs.db
+.AppleDouble
+.LSOverride
 
-# Logs
-*.log
-log/
-logs/
-
-# Database files (ephemeral on Render anyway)
-*.db
-*.sqlite
-
-# Large/temporary files
-*.zip
-*.tar.gz
-tmp/
-temp/
+# Environment Variables
+.env
+.env.*
+!.env.example
 
 # Python
-*.egg-info/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
 .eggs/
-langchain_core/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+.venv/
+env/
 
-# Frontend specific
-frontend/node_modules/
-frontend/.next/
-frontend/out/
-frontend/src-tauri/target/
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+.next/
+out/
+build/
 
-# Backend specific
-backend/venv/
-backend/__pycache__/
-backend/*.db
-backend/langchain_core/
+# Databases
+*.db
+*.sqlite3
 
+# Logs
+logs/
+*.log
+
+# IDEs
+.vscode/
+.idea/

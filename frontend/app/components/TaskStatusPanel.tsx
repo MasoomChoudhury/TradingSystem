@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { API_BASE_URL } from "../config";
 import { Activity, CheckCircle, XCircle, Clock, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 
 interface TaskStep {
@@ -39,8 +40,8 @@ export default function TaskStatusPanel() {
     const fetchTasks = async () => {
         try {
             const [activeRes, recentRes] = await Promise.all([
-                fetch("http://127.0.0.1:8000/api/tasks/active"),
-                fetch("http://127.0.0.1:8000/api/tasks/recent?limit=5")
+                fetch(`${API_BASE_URL}/api/tasks/active`),
+                fetch(`${API_BASE_URL}/api/tasks/recent?limit=5`)
             ]);
 
             if (activeRes.ok) {

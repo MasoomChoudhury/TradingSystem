@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { MessageCircle, RefreshCw, ArrowRight, CheckCircle, XCircle, AlertTriangle, Eye } from 'lucide-react';
+import { API_BASE_URL } from '../config';
 
 interface AgentMessageData {
     id: string;
@@ -21,8 +22,8 @@ const AgentCommsPanel: React.FC = () => {
         setIsLoading(true);
         try {
             const url = filterAgent === 'all'
-                ? 'http://127.0.0.1:8000/api/comms/history?limit=30'
-                : `http://127.0.0.1:8000/api/comms/history?limit=30&agent=${filterAgent}`;
+                ? `${API_BASE_URL}/api/comms/history?limit=30`
+                : `${API_BASE_URL}/api/comms/history?limit=30&agent=${filterAgent}`;
             const res = await fetch(url);
             const data = await res.json();
             setMessages(data.messages || []);
