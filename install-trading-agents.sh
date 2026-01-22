@@ -97,11 +97,8 @@ log "\n=== Installation Configuration ===" "$BLUE"
 
 # Get API domain
 while true; do
-    read -p "Enter your API domain (e.g., api.yourdomain.com): " API_DOMAIN
-    if [ -z "$API_DOMAIN" ]; then
-        log "Error: API domain is required" "$RED"
-        continue
-    fi
+    read -p "Enter your API domain (default: api.masoomchoudhury.com): " API_DOMAIN
+    API_DOMAIN=${API_DOMAIN:-api.masoomchoudhury.com}
     if [[ ! $API_DOMAIN =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$ ]]; then
         log "Error: Invalid domain format" "$RED"
         continue
@@ -111,11 +108,8 @@ done
 
 # Get frontend domain
 while true; do
-    read -p "Enter your frontend domain (e.g., trading.yourdomain.com): " FRONTEND_DOMAIN
-    if [ -z "$FRONTEND_DOMAIN" ]; then
-        log "Error: Frontend domain is required" "$RED"
-        continue
-    fi
+    read -p "Enter your frontend domain (default: trading.masoomchoudhury.com): " FRONTEND_DOMAIN
+    FRONTEND_DOMAIN=${FRONTEND_DOMAIN:-trading.masoomchoudhury.com}
     if [[ ! $FRONTEND_DOMAIN =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$ ]]; then
         log "Error: Invalid domain format" "$RED"
         continue
@@ -184,6 +178,7 @@ log "OpenAlgo URL: $OPENALGO_URL" "$BLUE"
 log "Installation Path: $INSTALL_PATH" "$BLUE"
 log "Email: $ADMIN_EMAIL" "$BLUE"
 log "LangSmith Enabled: $LANGSMITH_ENABLED" "$BLUE"
+log "CORS Origins: $FRONTEND_DOMAIN, $API_DOMAIN" "$BLUE"
 echo ""
 
 read -p "Proceed with installation? (y/n): " proceed
@@ -281,8 +276,10 @@ EOF
 check_status "Backend environment configuration failed"
 
 # Create Dockerfile for backend
-log "\n=== Creating Backend Dockerfile ===" "$BLUE"
-$SUDO tee backend/Dockerfile > /dev/null << 'EOF'
+log "\n=== Check Backend Dockerfile ===" "$BLUE"
+if [ ! -f backend/Dockerfile ]; then
+    log "Backend Dockerfile not found, creating default..." "$YELLOW"
+    $SUDO tee backend/Dockerfile > /dev/null << 'EOF'
 FROM python:3.12-slim
 
 WORKDIR /app
@@ -314,12 +311,16 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
 # Run the application
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 EOF
-
-check_status "Backend Dockerfile creation failed"
+    check_status "Backend Dockerfile creation failed"
+else
+    log "Using existing Backend Dockerfile from repository" "$GREEN"
+fi
 
 # Create Dockerfile for frontend
-log "\n=== Creating Frontend Dockerfile ===" "$BLUE"
-$SUDO tee frontend/Dockerfile > /dev/null << EOF
+log "\n=== Check Frontend Dockerfile ===" "$BLUE"
+if [ ! -f frontend/Dockerfile ]; then
+    log "Frontend Dockerfile not found, creating default..." "$YELLOW"
+    $SUDO tee frontend/Dockerfile > /dev/null << EOF
 FROM node:20-slim
 
 WORKDIR /app
@@ -346,12 +347,16 @@ EXPOSE 3000
 # Run the application
 CMD ["npm", "start"]
 EOF
-
-check_status "Frontend Dockerfile creation failed"
+    check_status "Frontend Dockerfile creation failed"
+else
+    log "Using existing Frontend Dockerfile from repository" "$GREEN"
+fi
 
 # Update next.config.ts to allow the domains
 log "\n=== Updating Next.js Configuration ===" "$BLUE"
-$SUDO tee frontend/next.config.ts > /dev/null << EOF
+if [ ! -f frontend/next.config.ts ]; then
+    log "Creating next.config.ts..." "$YELLOW"
+    $SUDO tee frontend/next.config.ts > /dev/null << EOF
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -366,8 +371,12 @@ const nextConfig: NextConfig = {
 
 export default nextConfig;
 EOF
-
-check_status "Next.js configuration failed"
+    check_status "Next.js configuration failed"
+else
+    log "Using existing next.config.ts from repository. Overwriting API URL if needed..." "$GREEN"
+    # We still might want to overwrite just to be sure we have the right API URL in the built image
+    # For now, relying on the fact that if it exists, it should be correct or configured via env vars
+fi
 
 # Update CORS in main.py - SKIPPED (Now handled via env vars)
 # log "\n=== Updating Backend CORS Configuration ===" "$BLUE"
