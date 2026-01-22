@@ -21,6 +21,7 @@ from langgraph.graph.message import add_messages
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.tools import tool
 from tools.openalgo_options import openalgo_get_option_chain
+from tools.openalgo_accounts import openalgo_get_funds, openalgo_get_positions
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -277,6 +278,8 @@ class OrchestratorAgent:
             get_strategy_config,
             start_trading_session,
             openalgo_get_option_chain,
+            openalgo_get_funds,
+            openalgo_get_positions,
         ]
         
         self.llm_with_tools = self.llm.bind_tools(self.tools)
