@@ -16,15 +16,15 @@ export default function Home() {
   const [activePanel, setActivePanel] = useState<'orchestrator' | 'analyst' | 'supervisor' | 'executor' | 'comms'>('orchestrator');
 
   return (
-    <div className="flex h-screen bg-[#0a0a0a] text-gray-300 font-sans overflow-hidden">
+    <div className="flex h-screen bg-[#0a0a0a] text-gray-300 font-sans overflow-hidden flex-col lg:flex-row">
 
-      {/* LEFT: Agent Panels */}
-      <div className="flex-1 flex flex-col min-w-0 border-r border-zinc-800">
-        {/* Tab Switcher */}
-        <div className="flex bg-[#151515] border-b border-zinc-800 shrink-0">
+      {/* LEFT: Agent Panels - Takes top or left space */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 border-r-0 lg:border-r border-zinc-800 h-[60vh] lg:h-auto">
+        {/* Tab Switcher - Scrollable on mobile */}
+        <div className="flex bg-[#151515] border-b border-zinc-800 shrink-0 overflow-x-auto no-scrollbar">
           <button
             onClick={() => setActivePanel('orchestrator')}
-            className={`flex-1 py-3 text-sm font-medium transition-colors ${activePanel === 'orchestrator'
+            className={`flex-1 py-3 px-4 min-w-[120px] text-sm font-medium transition-colors whitespace-nowrap ${activePanel === 'orchestrator'
               ? 'text-blue-400 border-b-2 border-blue-400 bg-[#1a1a1a]'
               : 'text-gray-500 hover:text-gray-300'
               }`}
@@ -33,7 +33,7 @@ export default function Home() {
           </button>
           <button
             onClick={() => setActivePanel('analyst')}
-            className={`flex-1 py-3 text-sm font-medium transition-colors ${activePanel === 'analyst'
+            className={`flex-1 py-3 px-4 min-w-[100px] text-sm font-medium transition-colors whitespace-nowrap ${activePanel === 'analyst'
               ? 'text-cyan-400 border-b-2 border-cyan-400 bg-[#1a1a1a]'
               : 'text-gray-500 hover:text-gray-300'
               }`}
@@ -42,7 +42,7 @@ export default function Home() {
           </button>
           <button
             onClick={() => setActivePanel('supervisor')}
-            className={`flex-1 py-3 text-sm font-medium transition-colors ${activePanel === 'supervisor'
+            className={`flex-1 py-3 px-4 min-w-[120px] text-sm font-medium transition-colors whitespace-nowrap ${activePanel === 'supervisor'
               ? 'text-purple-400 border-b-2 border-purple-400 bg-[#1a1a1a]'
               : 'text-gray-500 hover:text-gray-300'
               }`}
@@ -51,7 +51,7 @@ export default function Home() {
           </button>
           <button
             onClick={() => setActivePanel('executor')}
-            className={`flex-1 py-3 text-sm font-medium transition-colors ${activePanel === 'executor'
+            className={`flex-1 py-3 px-4 min-w-[100px] text-sm font-medium transition-colors whitespace-nowrap ${activePanel === 'executor'
               ? 'text-amber-400 border-b-2 border-amber-400 bg-[#1a1a1a]'
               : 'text-gray-500 hover:text-gray-300'
               }`}
@@ -60,7 +60,7 @@ export default function Home() {
           </button>
           <button
             onClick={() => setActivePanel('comms')}
-            className={`flex-1 py-3 text-sm font-medium transition-colors ${activePanel === 'comms'
+            className={`flex-1 py-3 px-4 min-w-[100px] text-sm font-medium transition-colors whitespace-nowrap ${activePanel === 'comms'
               ? 'text-green-400 border-b-2 border-green-400 bg-[#1a1a1a]'
               : 'text-gray-500 hover:text-gray-300'
               }`}
@@ -89,8 +89,8 @@ export default function Home() {
         </div>
       </div>
 
-      {/* RIGHT: Trading Session + Controls + Logs */}
-      <div className="w-[400px] flex flex-col shrink-0 bg-[#0a0a0a] overflow-hidden">
+      {/* RIGHT: Trading Session + Controls + Logs - Stacked on mobile, side on desktop */}
+      <div className="w-full lg:w-[400px] flex flex-col shrink-0 bg-[#0a0a0a] overflow-hidden h-[40vh] lg:h-auto border-t lg:border-t-0 border-zinc-800">
         {/* Trading Session Panel */}
         <div className="shrink-0 p-2 border-b border-zinc-800">
           <SessionPanel />
