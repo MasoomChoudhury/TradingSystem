@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // Use 'standalone' for Docker/Railway, 'export' for Tauri
-  output: process.env.DEPLOY_TARGET === 'railway' ? 'standalone' : 'export',
+  output: (process.env.DEPLOY_TARGET === 'railway' || process.env.DEPLOY_TARGET === 'docker') ? 'standalone' : 'export',
   images: {
     unoptimized: true,
   },
