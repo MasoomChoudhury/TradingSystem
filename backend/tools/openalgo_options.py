@@ -262,6 +262,38 @@ def openalgo_build_iron_condor(
         return json.dumps({"error": f"Iron Condor failed: {str(e)}"})
 
 
+@tool
+def openalgo_get_option_chain(
+    symbol: Annotated[str, "Underlying symbol (e.g., 'NIFTY', 'BANKNIFTY')"],
+    expiry: Annotated[str, "Expiry date (e.g., '28NOV24')"],
+    exchange: Annotated[str, "Exchange (NSE_INDEX, NFO, etc.)"] = "NSE_INDEX"
+) -> str:
+    """
+    Get option chain for a symbol and expiry.
+    
+    Returns a list of strikes with Call and Put symbols and their LTPs if available.
+    
+    Args:
+        symbol: Underlying symbol
+        expiry: Expiry date
+        exchange: Exchange code
+    
+    Returns:
+        JSON with option chain data (strikes, CE/PE symbols).
+    """
+    try:
+        client = get_openalgo_client()
+        # OpenAlgo client typically has an optionchain method
+        result = client.optionchain(
+            symbol=symbol,
+            expiry=expiry,
+            exchange=exchange.upper()
+        )
+        return json.dumps(result, indent=2)
+    except Exception as e:
+        return json.dumps({"error": f"Option chain lookup failed: {str(e)}"})
+
+
 # =============================================================================
 # Export all options tools
 # =============================================================================
@@ -271,6 +303,7 @@ OPENALGO_OPTIONS_TOOLS = [
     openalgo_option_symbol,
     openalgo_option_order,
     openalgo_build_iron_condor,
+    openalgo_get_option_chain,
 ]
 
 __all__ = [
@@ -279,4 +312,5 @@ __all__ = [
     "openalgo_option_symbol",
     "openalgo_option_order",
     "openalgo_build_iron_condor",
+    "openalgo_get_option_chain",
 ]

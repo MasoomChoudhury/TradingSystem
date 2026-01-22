@@ -20,6 +20,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.tools import tool
+from tools.openalgo_options import openalgo_get_option_chain
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -215,6 +216,28 @@ def get_strategy_config(
         return json.dumps({"error": str(e)})
 
 
+@tool
+def start_trading_session(
+    market_report: Annotated[str, "Daily market report text with strategy details"]
+) -> str:
+    """
+    Start a new daily trading session by parsing a market report.
+    This initializes strategies, risk limits, and session state.
+    """
+    try:
+        from trading_session import get_session_manager
+        manager = get_session_manager()
+        session = manager.start_session(market_report)
+        return json.dumps({
+            "status": "started",
+            "session_id": session.session_id,
+            "bias": session.market_bias.value,
+            "active_strategy": session.strategies[session.active_strategy_index].name
+        }, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
 # =============================================================================
 # ORCHESTRATOR AGENT CLASS
 # =============================================================================
@@ -249,7 +272,11 @@ class OrchestratorAgent:
             route_to_worker,
             get_system_status,
             list_registered_strategies,
+            get_system_status,
+            list_registered_strategies,
             get_strategy_config,
+            start_trading_session,
+            openalgo_get_option_chain,
         ]
         
         self.llm_with_tools = self.llm.bind_tools(self.tools)
