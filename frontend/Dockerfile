@@ -20,6 +20,10 @@ COPY . .
 # Uncomment the following line in case you want to disable telemetry during the build.
 # ENV NEXT_TELEMETRY_DISABLED 1
 
+# ENV NEXT_TELEMETRY_DISABLED 1
+
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV DEPLOY_TARGET=docker
 RUN npm run build
 
