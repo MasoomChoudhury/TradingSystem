@@ -15,6 +15,7 @@ from datetime import datetime
 import asyncio
 import logging
 import os
+from dataclasses import asdict
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -25,13 +26,21 @@ logging.basicConfig(level=logging.INFO)
 # ==================== FASTAPI SETUP ====================
 app = FastAPI(title="TradingSystem Agent API")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "tauri://localhost"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Check if we should disable FastAPI's CORS (because Nginx is handling it)
+disable_cors = os.environ.get("DISABLE_FASTAPI_CORS", "false").lower() == "true"
+
+if not disable_cors:
+    app.add_middleware(
+        CORSMiddleware,
+        # Use environment variable for origins, default to localhost for dev
+        allow_origins=os.environ.get("CORS_ORIGINS", "http://localhost:3000,tauri://localhost").split(","),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    logging.info("✅ FastAPI CORS Middleware Enabled")
+else:
+    logging.info("🚫 FastAPI CORS Middleware Disabled (Letting Nginx handle it)")
 
 # ==================== WEBSOCKETS ====================
 active_websockets: list[WebSocket] = []
@@ -451,7 +460,26 @@ async def resume_session():
     """Resume a paused session."""
     manager = get_session_manager()
     manager.resume_session()
+    manager.resume_session()
     return {"status": "resumed"}
+
+class RiskLimitUpdate(BaseModel):
+    max_lots: Optional[int] = None
+    max_daily_loss: Optional[float] = None
+
+@app.post("/api/session/risk")
+async def update_risk_limits(limits: RiskLimitUpdate):
+    """Update risk limits for the current session."""
+    manager = get_session_manager()
+    return manager.update_risk_limits(max_lots=limits.max_lots, max_daily_loss=limits.max_daily_loss)
+
+@app.get("/api/session/risk")
+async def get_risk_limits():
+    """Get current session risk limits."""
+    manager = get_session_manager()
+    if manager.current_session:
+        return asdict(manager.current_session.risk_limits)
+    return {"error": "No active session", "defaults": {"max_lots": 1, "max_daily_loss": 1500.0}}
 
 @app.post("/api/session/end")
 async def end_trading_session():

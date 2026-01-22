@@ -275,6 +275,7 @@ LANGCHAIN_TRACING_V2=$LANGSMITH_ENABLED
 LANGCHAIN_API_KEY=$LANGSMITH_API_KEY
 LANGCHAIN_PROJECT=$LANGSMITH_PROJECT
 LANGCHAIN_ENDPOINT=https://api.smith.langchain.com
+CORS_ORIGINS=http://localhost:3000,tauri://localhost,https://$FRONTEND_DOMAIN,https://$API_DOMAIN
 EOF
 
 check_status "Backend environment configuration failed"
@@ -368,10 +369,10 @@ EOF
 
 check_status "Next.js configuration failed"
 
-# Update CORS in main.py
-log "\n=== Updating Backend CORS Configuration ===" "$BLUE"
-$SUDO sed -i "s|allow_origins=\[\"http://localhost:3000\", \"tauri://localhost\"\]|allow_origins=[\"http://localhost:3000\", \"tauri://localhost\", \"https://$FRONTEND_DOMAIN\", \"https://$API_DOMAIN\"]|g" backend/main.py
-check_status "CORS configuration failed"
+# Update CORS in main.py - SKIPPED (Now handled via env vars)
+# log "\n=== Updating Backend CORS Configuration ===" "$BLUE"
+# $SUDO sed -i "s|allow_origins=\[\"http://localhost:3000\", \"tauri://localhost\"\]|allow_origins=[\"http://localhost:3000\", \"tauri://localhost\", \"https://$FRONTEND_DOMAIN\", \"https://$API_DOMAIN\"]|g" backend/main.py
+# check_status "CORS configuration failed"
 
 # Create docker-compose.yaml
 log "\n=== Creating Docker Compose Configuration ===" "$BLUE"
@@ -541,11 +542,11 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     
-    # CORS Headers
-    add_header Access-Control-Allow-Origin "https://$FRONTEND_DOMAIN" always;
-    add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" always;
-    add_header Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With" always;
-    add_header Access-Control-Allow-Credentials "true" always;
+    # CORS Headers - HANDLED BY FASTAPI
+    # add_header Access-Control-Allow-Origin "https://$FRONTEND_DOMAIN" always;
+    # add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" always;
+    # add_header Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With" always;
+    # add_header Access-Control-Allow-Credentials "true" always;
     
     # Client settings
     client_max_body_size 50M;
@@ -578,16 +579,16 @@ server {
         limit_req zone=trading_api_limit burst=100 nodelay;
         limit_req_status 429;
         
-        # Handle preflight
-        if (\$request_method = 'OPTIONS') {
-            add_header Access-Control-Allow-Origin "https://$FRONTEND_DOMAIN" always;
-            add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" always;
-            add_header Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With" always;
-            add_header Access-Control-Max-Age 3600;
-            add_header Content-Type "text/plain; charset=utf-8";
-            add_header Content-Length 0;
-            return 204;
-        }
+        # Handle preflight - HANDLED BY FASTAPI
+        # if (\$request_method = 'OPTIONS') {
+        #     add_header Access-Control-Allow-Origin "https://$FRONTEND_DOMAIN" always;
+        #     add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" always;
+        #     add_header Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With" always;
+        #     add_header Access-Control-Max-Age 3600;
+        #     add_header Content-Type "text/plain; charset=utf-8";
+        #     add_header Content-Length 0;
+        #     return 204;
+        # }
         
         proxy_pass http://trading_agents;
         proxy_http_version 1.1;

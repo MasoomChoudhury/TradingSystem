@@ -53,6 +53,7 @@ write_files:
             - OPENALGO_API_KEY=${OPENALGO_API_KEY}
             - GEMINI_API_KEY=${GEMINI_API_KEY}
             - TZ=Asia/Kolkata
+            - CORS_ORIGINS=*
           depends_on:
             - openalgo
           command: >
