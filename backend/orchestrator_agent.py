@@ -128,15 +128,15 @@ def route_to_worker(
     }
     
     # Log inter-agent communication for supervisor/executor routing
-    if worker in ["supervisor", "executor"]:
-        from agent_comms import send_agent_message
-        send_agent_message(
-            from_agent="orchestrator",
-            to_agent=worker,
-            message_type="request",
-            content=f"Routing action: {action}",
-            metadata=routing
-        )
+    # Log inter-agent communication for all routing
+    from agent_comms import send_agent_message
+    send_agent_message(
+        from_agent="orchestrator",
+        to_agent=worker,
+        message_type="request",
+        content=f"Routing action: {action}",
+        metadata=routing
+    )
     
     return json.dumps({"status": "routed", "routing": routing}, indent=2)
 
@@ -367,7 +367,9 @@ User: "Buy 10 shares of INFY"
 → Plan: [accounts.get_funds → supervisor.validate_trade → executor.place_order]
 
 ## IMPORTANT
-Always use create_task_plan to structure the workflow, then route_to_worker for each step."""
+1. Always use create_task_plan first.
+2. For READ-ONLY requests (market_data, options, accounts), you have DIRECT ACCESS to tools (e.g., openalgo_get_funds, openalgo_get_option_chain). EXECUTE THEM DIRECTLY after planning.
+3. For WRITE/RISK requests (trade, deploy), use route_to_worker to send to Supervisor/Executor.
 
         full_messages = [SystemMessage(content=system_prompt)] + messages
         response = self.llm_with_tools.invoke(full_messages)
