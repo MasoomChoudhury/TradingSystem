@@ -399,12 +399,8 @@ WRONG: `route_to_worker("market_data", ...)` <- THIS CAUSES THE BUG.
         messages = state["messages"]
         last_message = messages[-1]
         
-        # If LLM made tool calls, process them
+        # If LLM made tool calls, process them (Execute tool)
         if hasattr(last_message, "tool_calls") and last_message.tool_calls:
-            # Check if routing to a worker
-            for tc in last_message.tool_calls:
-                if tc["name"] == "route_to_worker":
-                    return "route_worker"
             return "continue"
         
         return "end"
