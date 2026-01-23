@@ -279,8 +279,6 @@ class OrchestratorAgent:
             route_to_worker,
             get_system_status,
             list_registered_strategies,
-            get_system_status,
-            list_registered_strategies,
             get_strategy_config,
             start_trading_session,
             openalgo_get_option_chain,
