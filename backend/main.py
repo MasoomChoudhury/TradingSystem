@@ -92,11 +92,59 @@ class ChatMessage(BaseModel):
 
 @app.post("/api/chat")
 async def chat_agent(body: ChatMessage):
+    # 1. Orchestrator Phase
     result = await orchestrator.send_message(body.message, body.thread_id)
+    response_content = result["response"]
+    tool_calls = result.get("tool_calls", [])
+    
+    # 2. Check for Routing
+    routed_worker = None
+    routing_payload = None
+    
+    for tc in tool_calls:
+        if tc["tool"] == "route_to_worker":
+            try:
+                # The tool result is a JSON string, we need to parse it
+                # Logic: The Orchestrator returned a JSON string in 'result' field of the tool call
+                # But wait, send_message returns 'tool_calls' list of dicts: {'tool': name, 'result': str}
+                import json
+                routing_data = json.loads(tc["result"])
+                if routing_data.get("status") == "routed":
+                    routed_worker = routing_data["routing"]["worker"]
+                    routing_payload = routing_data["routing"]
+            except Exception as e:
+                logging.error(f"Failed to parse routing data: {e}")
+            break # Only handle one route per turn
+            
+    # 3. Execute Routed Worker (Supervisor Support)
+    if routed_worker == "supervisor" and routing_payload:
+        logging.info(f"🔄 Auto-routing to Supervisor: {routing_payload['action']}")
+        
+        # Construct message for Supervisor
+        action = routing_payload.get("action", "analyze")
+        params = routing_payload.get("params", {})
+        
+        # Format the handoff message clearly
+        supervisor_msg = f"Request from Orchestrator: {action}\nParameters: {json.dumps(params)}"
+        if body.message:
+            supervisor_msg += f"\nOriginal User Request: {body.message}"
+            
+        # Call Supervisor
+        supervisor_result = await supervisor.analyze(
+            message=supervisor_msg,
+            thread_id=body.thread_id
+        )
+        
+        # Append Supervisor's response
+        response_content += f"\n\n--- 🛡️ **Supervisor Analysis** ---\n{supervisor_result['response']}"
+        
+        # Check if Supervisor approved something for Executor (Layer 3 Chaining)
+        # (This can be added later, but for now Layer 1->2 is critical)
+
     return {
         "role": "ai",
-        "content": result["response"],
-        "tool_calls": result.get("tool_calls", [])
+        "content": response_content,
+        "tool_calls": tool_calls
     }
 
 @app.get("/api/chat/history")
