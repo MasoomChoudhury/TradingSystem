@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { API_BASE_URL } from "../config";
 
 interface OpenAlgoStatus {
@@ -25,16 +25,18 @@ export default function OpenAlgoControlPanel() {
     const [isLiveMode, setIsLiveMode] = useState(false);
     const [isToggling, setIsToggling] = useState(false);
 
+    const lastToggleTime = useRef<number>(0);
+
     // Fetch status on mount
     useEffect(() => {
         fetchStatus();
         fetchAnalyzerStatus();
 
-        // Poll every 10 seconds
+        // Poll every 5 seconds (faster updates)
         const interval = setInterval(() => {
             fetchStatus();
             fetchAnalyzerStatus();
-        }, 10000);
+        }, 5000);
 
         return () => clearInterval(interval);
     }, []);
@@ -57,7 +59,11 @@ export default function OpenAlgoControlPanel() {
             if (res.ok) {
                 const data = await res.json();
                 setAnalyzerStatus(data);
-                setIsLiveMode(data?.data?.mode === "live");
+
+                // Only update mode from poller if we haven't toggled recently (prevention of stale overwrites)
+                if (Date.now() - lastToggleTime.current > 5000) {
+                    setIsLiveMode(data?.data?.mode === "live");
+                }
             }
         } catch {
             // Analyzer status not available
@@ -66,17 +72,31 @@ export default function OpenAlgoControlPanel() {
 
     const toggleMode = async () => {
         setIsToggling(true);
+        lastToggleTime.current = Date.now(); // Mark toggle time
         try {
             const newMode = !isLiveMode; // true = analyze, false = live
+            // Optimistic update
+            setIsLiveMode(newMode);
+
             const res = await fetch(`${API_BASE_URL}/api/openalgo/analyzer-toggle?mode=${!newMode}`, {
                 method: "POST"
             });
+
             if (res.ok) {
-                setIsLiveMode(newMode);
-                fetchAnalyzerStatus();
+                // Confirm update from response if needed, but optimistic is better for UX
+                const data = await res.json();
+                // Optionally update stats from response
+                if (data && data.status) {
+                    // success
+                }
+            } else {
+                // Revert on failure
+                setIsLiveMode(!newMode);
+                console.error("Toggle failed, reverting");
             }
         } catch (e) {
             console.error("Toggle failed:", e);
+            setIsLiveMode(!isLiveMode); // Revert
         } finally {
             setIsToggling(false);
         }
