@@ -388,7 +388,7 @@ User: "Buy 10 shares of INFY"
 User: "Price of INFOSYS?"
 CORRECT: Call tool `openalgo_get_quotes(symbol="INFY", exchange="NSE")` directly.
 WRONG: `route_to_worker("market_data", ...)` <- THIS CAUSES THE BUG.
-
+"""
         full_messages = [SystemMessage(content=system_prompt)] + messages
         response = self.llm_with_tools.invoke(full_messages)
         
