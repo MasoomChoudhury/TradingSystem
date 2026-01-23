@@ -22,6 +22,12 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.tools import tool
 from tools.openalgo_options import openalgo_get_option_chain
 from tools.openalgo_accounts import openalgo_get_funds, openalgo_get_positions
+from tools.openalgo_marketdata import (
+    openalgo_get_quotes,
+    openalgo_search_symbols,
+    openalgo_get_market_depth,
+    openalgo_get_history
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -280,6 +286,10 @@ class OrchestratorAgent:
             openalgo_get_option_chain,
             openalgo_get_funds,
             openalgo_get_positions,
+            openalgo_get_quotes,
+            openalgo_search_symbols,
+            openalgo_get_market_depth,
+            openalgo_get_history,
         ]
         
         self.llm_with_tools = self.llm.bind_tools(self.tools)
@@ -367,9 +377,17 @@ User: "Buy 10 shares of INFY"
 → Plan: [accounts.get_funds → supervisor.validate_trade → executor.place_order]
 
 ## IMPORTANT
-1. Always use create_task_plan first.
-2. For READ-ONLY requests (market_data, options, accounts), you have DIRECT ACCESS to tools (e.g., openalgo_get_funds, openalgo_get_option_chain). EXECUTE THEM DIRECTLY after planning.
-3. For WRITE/RISK requests (trade, deploy), use route_to_worker to send to Supervisor/Executor.
+1. **NO RESPONSE BUG:** If you PLAN a "market_data" or "info" step but only "route" it, the user sees NOTHING. You MUST execute the tool directly.
+2. **DIRECT EXECUTION:** For `get_quotes`, `search_symbols`, `get_funds`, `option_chain`, etc., DO NOT route. CALL THE TOOL DIRECTLY in the same turn.
+3. **ONLY ROUTE** for:
+   - Complex strategy creation (Analysis) -> to Supervisor/Analyst
+   - Placing/Modifying Orders (Trade) -> to Supervisor (then to Executor)
+   - Configuration (Deploy)
+   
+**Example Correct Behavior:**
+User: "Price of INFOSYS?"
+CORRECT: Call tool `openalgo_get_quotes(symbol="INFY", exchange="NSE")` directly.
+WRONG: `route_to_worker("market_data", ...)` <- THIS CAUSES THE BUG.
 
         full_messages = [SystemMessage(content=system_prompt)] + messages
         response = self.llm_with_tools.invoke(full_messages)
