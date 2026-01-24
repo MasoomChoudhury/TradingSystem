@@ -128,10 +128,29 @@ async def chat_agent(body: ChatMessage):
         if body.message:
             supervisor_msg += f"\nOriginal User Request: {body.message}"
             
+        # LOGGING (1): Orchestrator -> Supervisor
+        from agent_comms import send_agent_message
+        send_agent_message(
+            from_agent="orchestrator",
+            to_agent="supervisor",
+            message_type="request",
+            content=supervisor_msg,
+            metadata={"action": action, "params": params}
+        )
+            
         # Call Supervisor
         supervisor_result = await supervisor.analyze(
             message=supervisor_msg,
             thread_id=body.thread_id
+        )
+        
+        # LOGGING (2): Supervisor -> Orchestrator
+        send_agent_message(
+            from_agent="supervisor",
+            to_agent="orchestrator",
+            message_type="response",
+            content=supervisor_result['response'],
+            metadata={"regime_status": supervisor_result.get("regime_status", "UNKNOWN")}
         )
         
         # Append Supervisor's response
@@ -141,20 +160,6 @@ async def chat_agent(body: ChatMessage):
         # Look for "validate_trade_request" in supervisor's tool calls
         sup_tools = supervisor_result.get("tool_calls", [])
         approved_trade = None
-        
-        for stc in sup_tools:
-            if stc["tool"] == "validate_trade_request":
-                try:
-                    # Supervisor tool execution result is in stc["result"] (hopefully not truncated, or we need to fix Supervisor too)
-                    # SupervisorAgent doesn't truncate yet in its code, checking... 
-                    # SupervisorAgent.validate uses msg.content[:300] in tool_calls_made! 
-                    # We might need to fix SupervisorAgent too. But let's assume valid JSON for a moment or fix it.
-                    # WAIT: SupervisorAgent DOES truncate. I need to fix SupervisorAgent as well specifically for this.
-                    # For now, let's try to parse even if truncated (hash part might be missing)
-                    # Actually, better to fix SupervisorAgent.py first.
-                    pass 
-                except:
-                    pass
 
         # Since I can't easily jump files mid-edit, I will implement the logic assuming I WILL fix SupervisorAgent next.
         for stc in sup_tools:
@@ -175,10 +180,38 @@ async def chat_agent(body: ChatMessage):
         if approved_trade:
              logging.info(f"⚡ Auto-routing to Executor: {approved_trade['symbol']}")
              
+             executor_request_msg = f"Execute approved trade: {approved_trade['action']} {approved_trade['quantity']} {approved_trade['symbol']}"
+             
+             # LOGGING (3): Supervisor -> Executor
+             send_agent_message(
+                 from_agent="supervisor",
+                 to_agent="executor",
+                 message_type="request", # Handing off the plan
+                 content=executor_request_msg,
+                 metadata={"trade_plan": approved_trade}
+             )
+             
              executor_result = await executor_agent.execute(
-                 request=f"Execute approved trade: {approved_trade['action']} {approved_trade['quantity']} {approved_trade['symbol']}",
+                 request=executor_request_msg,
                  approved_plan=approved_trade,
                  thread_id=body.thread_id
+             )
+             
+             # LOGGING (4): Executor -> Supervisor
+             # ExecutorAgent might log this internally? 
+             # Let's check executor_agent.py. It does: send_agent_message(..., to_agent="supervisor", ...)
+             # So we might not need to duplicate log the response if Executor does it.
+             # ExecutorAgent line 280: send_agent_message(from="executor", to="supervisor", type="response"...)
+             # BUT only on SUCCESS in execute_approved_order. 
+             # If it fails or if the text response is generated, let's log the general outcome here too just in case.
+             # Actually, simpler to rely on Executor's internal logging for tools, but let's log the high level response content here for chat history completeness.
+             
+             send_agent_message(
+                 from_agent="executor",
+                 to_agent="supervisor",
+                 message_type="response", 
+                 content=executor_result['response'],
+                 metadata={"status": "completed"}
              )
              
              response_content += f"\n\n--- ⚡ **Executor Action** ---\n{executor_result['response']}"
