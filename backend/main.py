@@ -63,6 +63,61 @@ async def websocket_logs(websocket: WebSocket):
     except WebSocketDisconnect:
         active_websockets.remove(websocket)
 
+# ==================== AGENT COMMS WEBSOCKETS ====================
+active_comms_websockets: list[WebSocket] = []
+
+@app.websocket("/ws/comms")
+async def websocket_comms(websocket: WebSocket):
+    await websocket.accept()
+    active_comms_websockets.append(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        active_comms_websockets.remove(websocket)
+
+async def broadcast_agent_message(message):
+    """Callback for AgentCommunicationBus to broadcast messages."""
+    import json
+    # message is an AgentMessage dataclass
+    msg_dict = message.to_dict()
+    json_str = json.dumps(msg_dict)
+    
+    # Broadcast to all connected clients
+    for ws in active_comms_websockets[:]:
+        try:
+            await ws.send_text(json_str)
+        except:
+            if ws in active_comms_websockets:
+                active_comms_websockets.remove(ws)
+
+@app.on_event("startup")
+def setup_comms_listener():
+    """Subscribe to agent communication bus."""
+    from agent_comms import get_comms_bus
+    import asyncio
+    
+    bus = get_comms_bus()
+    
+    # Define a sync wrapper that schedules the async broadcast
+    def on_message(msg):
+        # We need to run the async broadcast from this sync callback
+        # Since this callback runs in the thread of the request/event,
+        # we can't easily await. But we can verify if there's a running loop.
+        try:
+            loop = asyncio.get_running_loop()
+            if loop.is_running():
+                loop.create_task(broadcast_agent_message(msg))
+            else:
+                # Should not happen in FastAPI app context usually
+                pass
+        except RuntimeError:
+            # No loop running
+            pass
+            
+    bus.subscribe(on_message)
+    logging.info("🔗 WebSocket broadcaster subscribed to Agent Bus")
+
 # ==================== BASIC ROUTES ====================
 @app.get("/")
 def read_root():
