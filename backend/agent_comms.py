@@ -40,8 +40,13 @@ class AgentCommunicationBus:
     def __init__(self, db_path: str = COMMS_DB):
         self.db_path = db_path
         self._init_db()
+        self._subscribers = []
         logger.info("🔗 Agent Communication Bus initialized")
     
+    def subscribe(self, callback):
+        """Register a callback for new messages."""
+        self._subscribers.append(callback)
+
     def _init_db(self):
         """Initialize SQLite database for message storage."""
         conn = sqlite3.connect(self.db_path)
@@ -76,16 +81,6 @@ class AgentCommunicationBus:
     ) -> AgentMessage:
         """
         Send a message from one agent to another.
-        
-        Args:
-            from_agent: Sending agent name
-            to_agent: Receiving agent name
-            message_type: Type of message (request, response, advisory, approval, denial, info)
-            content: Message content
-            metadata: Optional additional data (e.g., trade_plan, approval_token)
-            
-        Returns:
-            The created AgentMessage
         """
         message = AgentMessage(
             id=str(uuid.uuid4()),
@@ -116,6 +111,14 @@ class AgentCommunicationBus:
         conn.close()
         
         logger.info(f"🔗 [{from_agent}] → [{to_agent}]: {message_type} - {content[:50]}...")
+        
+        # Notify subscribers
+        for callback in self._subscribers:
+            try:
+                callback(message)
+            except Exception as e:
+                logger.error(f"Error in subscriber callback: {e}")
+                
         return message
     
     def get_messages(
