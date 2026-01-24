@@ -351,8 +351,10 @@ def modify_order(
         return json.dumps({"status": "rejected", "reason": "No approval token"})
     
     try:
-        from tools.openalgo_tools import get_openalgo_client
+        from tools.openalgo_tools import get_openalgo_client, add_ws_log
         client = get_openalgo_client()
+        
+        add_ws_log("ORDER", f"Modifying order {order_id}", {"symbol": symbol, "quantity": quantity, "price": price})
         
         result = client.modifyorder(
             order_id=order_id,
@@ -366,9 +368,11 @@ def modify_order(
         )
         
         logger.info(f"Order modified: {order_id}")
+        add_ws_log("ORDER", f"Order modified: {order_id}", result)
         return json.dumps(result, indent=2)
         
     except Exception as e:
+        add_ws_log("ERROR", f"Order modification failed: {str(e)}")
         return json.dumps({"status": "error", "error": str(e)})
 
 
@@ -390,14 +394,19 @@ def cancel_order(
         return json.dumps({"status": "rejected", "reason": "No approval token"})
     
     try:
-        from tools.openalgo_tools import get_openalgo_client
+        from tools.openalgo_tools import get_openalgo_client, add_ws_log
         client = get_openalgo_client()
+        
+        add_ws_log("ORDER", f"Cancelling order {order_id}")
+        
         result = client.cancelorder(order_id=order_id)
         
         logger.info(f"Order cancelled: {order_id}")
+        add_ws_log("ORDER", f"Order cancelled: {order_id}", result)
         return json.dumps(result, indent=2)
         
     except Exception as e:
+        add_ws_log("ERROR", f"Order cancellation failed: {str(e)}")
         return json.dumps({"status": "error", "error": str(e)})
 
 
@@ -414,14 +423,19 @@ def emergency_cancel_all() -> str:
     exec_log = get_execution_log()
     
     try:
-        from tools.openalgo_tools import get_openalgo_client
+        from tools.openalgo_tools import get_openalgo_client, add_ws_log
         client = get_openalgo_client()
+        
+        add_ws_log("WARNING", "Initiating EMERGENCY CANCEL ALL")
+        
         result = client.cancelallorder()
         
         logger.warning("🚨 EMERGENCY: All orders cancelled!")
+        add_ws_log("alert", "EMERGENCY: All orders cancelled", result)
         return json.dumps({"status": "success", "action": "cancel_all", "result": result}, indent=2)
         
     except Exception as e:
+        add_ws_log("ERROR", f"Emergency cancel failed: {str(e)}")
         return json.dumps({"status": "error", "error": str(e)})
 
 
@@ -434,14 +448,19 @@ def emergency_close_all() -> str:
     exec_log = get_execution_log()
     
     try:
-        from tools.openalgo_tools import get_openalgo_client
+        from tools.openalgo_tools import get_openalgo_client, add_ws_log
         client = get_openalgo_client()
+        
+        add_ws_log("WARNING", "Initiating EMERGENCY CLOSE ALL")
+        
         result = client.closeposition()
         
         logger.warning("🚨 EMERGENCY: All positions closed!")
+        add_ws_log("alert", "EMERGENCY: All positions closed", result)
         return json.dumps({"status": "success", "action": "close_all", "result": result}, indent=2)
         
     except Exception as e:
+        add_ws_log("ERROR", f"Emergency close failed: {str(e)}")
         return json.dumps({"status": "error", "error": str(e)})
 
 
