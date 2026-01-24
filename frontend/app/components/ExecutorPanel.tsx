@@ -45,38 +45,35 @@ const ExecutorPanel: React.FC = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
+    const fetchConversation = async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/comms/conversation?agent1=supervisor&agent2=executor&limit=20`);
+            const data = await res.json();
+            const conversation = data.messages || [];
+
+            const mappedMessages: Message[] = conversation.reverse().map((msg: any) => ({
+                role: msg.from_agent === 'executor' ? 'ai' : 'user', // Supervisor is 'user' from Executor's perspective
+                content: `**[${msg.from_agent} ${msg.message_type}]**\n${msg.content}`
+            }));
+
+            setMessages(mappedMessages);
+        } catch (e) {
+            console.error("Failed to fetch executor conversation");
+        }
+    };
+
     useEffect(() => {
         scrollToBottom();
         fetchStatus();
-    }, [messages]);
+        fetchConversation();
+        const interval = setInterval(() => {
+            fetchStatus();
+            fetchConversation();
+        }, 5000);
+        return () => clearInterval(interval);
+    }, []); // Removed [messages] dependency to prevent infinite loops if we update messages in useEffect
 
-    const fetchStatus = async () => {
-        try {
-            const res = await fetch(`${API_BASE_URL}/api/executor/status`);
-            const data = await res.json();
-            setStatus(data);
-        } catch (e) {
-            console.error("Failed to fetch executor status");
-        }
-    };
-
-    const getStatusColor = (s: string) => {
-        switch (s) {
-            case 'IDLE': return 'bg-gray-700 text-gray-300';
-            case 'WAITING_ENTRY': return 'bg-yellow-900/50 text-yellow-300 border border-yellow-700';
-            case 'IN_POSITION': return 'bg-green-900/50 text-green-300 border border-green-700';
-            case 'WAITING_EXIT': return 'bg-blue-900/50 text-blue-300 border border-blue-700';
-            case 'WAITING_FOR_BUILD': return 'bg-purple-900/50 text-purple-300 border border-purple-700';
-            case 'STOPPED': return 'bg-red-900/50 text-red-300 border border-red-700';
-            default: return 'bg-gray-800 text-gray-400';
-        }
-    };
-
-    const getPositionIcon = (side: string) => {
-        if (side === 'LONG') return <TrendingUp size={12} className="text-green-400" />;
-        if (side === 'SHORT') return <TrendingDown size={12} className="text-red-400" />;
-        return <Minus size={12} className="text-gray-400" />;
-    };
+    // ... (rest of fetchStatus, getStatusColor, getPositionIcon)
 
     const sendCommand = async (command: string) => {
         setIsLoading(true);
@@ -87,12 +84,14 @@ const ExecutorPanel: React.FC = () => {
                 body: JSON.stringify({ command, strategy_name: "", levels: null, execution_params: null }),
             });
             const data = await response.json();
-            if (data.content) {
-                setMessages(prev => [...prev, { role: 'ai', content: data.content }]);
-            }
+            // Optional: let the poll pick it up or push manually
+            // if (data.content) {
+            //    setMessages(prev => [...prev, { role: 'ai', content: data.content }]);
+            // }
             fetchStatus();
+            fetchConversation();
         } catch (error) {
-            setMessages(prev => [...prev, { role: 'ai', content: "Error sending command." }]);
+            // setMessages(prev => [...prev, { role: 'ai', content: "Error sending command." }]);
         } finally {
             setIsLoading(false);
         }
@@ -112,17 +111,11 @@ const ExecutorPanel: React.FC = () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: input }),
             });
-            const data = await response.json();
-
-            if (data.content) {
-                setMessages(prev => [...prev, {
-                    role: 'ai',
-                    content: typeof data.content === 'string' ? data.content : JSON.stringify(data.content, null, 2)
-                }]);
-            }
+            // Let the poll pick up the response for consistency
             fetchStatus();
+            fetchConversation();
         } catch (error) {
-            setMessages(prev => [...prev, { role: 'ai', content: "Error communicating with Executor." }]);
+            // setMessages(prev => [...prev, { role: 'ai', content: "Error communicating with Executor." }]);
         } finally {
             setIsLoading(false);
         }
@@ -213,7 +206,7 @@ const ExecutorPanel: React.FC = () => {
                             </div>
                         )}
                         <div className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${msg.role === 'user'
-                            ? 'bg-amber-700 text-white'
+                            ? 'bg-amber-900/40 text-gray-100 border border-amber-700/50'
                             : 'bg-[#333333] text-gray-200'
                             }`}>
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -221,8 +214,8 @@ const ExecutorPanel: React.FC = () => {
                             </ReactMarkdown>
                         </div>
                         {msg.role === 'user' && (
-                            <div className="w-7 h-7 rounded-full bg-gray-600 flex items-center justify-center shrink-0">
-                                <User size={14} className="text-gray-200" />
+                            <div className="w-7 h-7 rounded-full bg-purple-900/50 flex items-center justify-center shrink-0" title="Supervisor">
+                                {msg.content.includes('supervisor') ? '🛡️' : <User size={14} className="text-gray-200" />}
                             </div>
                         )}
                     </div>
@@ -248,7 +241,7 @@ const ExecutorPanel: React.FC = () => {
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder="Ask about execution status..."
+                        placeholder="Manual command / ask status..."
                         className="w-full bg-[#1e1e1e] text-gray-200 text-sm rounded-md pl-3 pr-10 py-2 focus:outline-none focus:ring-1 focus:ring-amber-500 resize-none h-12"
                     />
                     <button

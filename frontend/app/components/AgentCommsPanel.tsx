@@ -99,6 +99,10 @@ const AgentCommsPanel: React.FC = () => {
                         <option value="analyst">👁️ Analyst</option>
                         <option value="supervisor">🛡️ Supervisor</option>
                         <option value="executor">⚡ Executor</option>
+                        <option value="market_data">📊 Market Data</option>
+                        <option value="indicators">📈 Indicators</option>
+                        <option value="options">📉 Options</option>
+                        <option value="accounts">💰 Accounts</option>
                     </select>
                     <button
                         onClick={fetchMessages}
