@@ -322,10 +322,29 @@ async def supervisor_analyze(body: SupervisorRequest):
 @app.post("/api/supervisor/chat")
 async def supervisor_chat(body: ChatMessage):
     """Simple chat with Supervisor (no market data)."""
+    # LOGGING (User -> Supervisor)
+    from agent_comms import send_agent_message
+    send_agent_message(
+        from_agent="user",
+        to_agent="supervisor",
+        message_type="chat",
+        content=body.message
+    )
+
     result = await supervisor.analyze(
         message=body.message,
         thread_id=body.thread_id
     )
+    
+    # LOGGING (Supervisor -> User)
+    send_agent_message(
+        from_agent="supervisor",
+        to_agent="user",
+        message_type="response",
+        content=result["response"],
+        metadata={"regime_status": result.get("regime_status", "UNKNOWN")}
+    )
+
     return {
         "role": "ai",
         "content": result["response"],
@@ -351,6 +370,15 @@ class ExecutorCommand(BaseModel):
 @app.post("/api/executor/command")
 async def executor_command(body: ExecutorCommand):
     """Receive command from Supervisor."""
+    # LOGGING (User/Manual -> Executor)
+    from agent_comms import send_agent_message
+    send_agent_message(
+        from_agent="user",
+        to_agent="executor",
+        message_type="command",
+        content=f"Command: {body.command}" + (f" ({body.strategy_name})" if body.strategy_name else "")
+    )
+
     result = await executor_agent.execute_command(
         command=body.command,
         strategy_name=body.strategy_name,
@@ -358,6 +386,16 @@ async def executor_command(body: ExecutorCommand):
         execution_params=body.execution_params,
         thread_id=body.thread_id
     )
+
+    # LOGGING (Executor -> User)
+    send_agent_message(
+        from_agent="executor",
+        to_agent="user",
+        message_type="response",
+        content=result["response"],
+        metadata={"status": result.get("status", "UNKNOWN")}
+    )
+
     return {
         "role": "ai",
         "content": result["response"],
@@ -374,7 +412,25 @@ async def executor_status():
 @app.post("/api/executor/chat")
 async def executor_chat(body: ChatMessage):
     """Chat with Executor agent."""
+    # LOGGING (User -> Executor)
+    from agent_comms import send_agent_message
+    send_agent_message(
+        from_agent="user",
+        to_agent="executor",
+        message_type="chat",
+        content=body.message
+    )
+
     result = await executor_agent.chat(body.message, body.thread_id)
+
+    # LOGGING (Executor -> User)
+    send_agent_message(
+        from_agent="executor",
+        to_agent="user",
+        message_type="response",
+        content=result["response"]
+    )
+
     return {
         "role": "ai",
         "content": result["response"],
