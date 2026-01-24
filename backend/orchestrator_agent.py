@@ -447,7 +447,8 @@ WRONG: `route_to_worker("market_data", ...)` <- THIS CAUSES THE BUG.
                                 )
                                 tool_calls_made.append({
                                     "tool": msg.name,
-                                    "result": msg.content[:300] + "..." if len(msg.content) > 300 else msg.content
+                                    "result": msg.content[:300] + "..." if len(msg.content) > 300 else msg.content,
+                                    "full_result": msg.content  # Keep full content for logic
                                 })
                     elif node_name == "orchestrator":
                         update_agent_task(task_id, "🤖 Orchestrator thinking...", "running")

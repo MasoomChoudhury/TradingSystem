@@ -104,11 +104,10 @@ async def chat_agent(body: ChatMessage):
     for tc in tool_calls:
         if tc["tool"] == "route_to_worker":
             try:
-                # The tool result is a JSON string, we need to parse it
-                # Logic: The Orchestrator returned a JSON string in 'result' field of the tool call
-                # But wait, send_message returns 'tool_calls' list of dicts: {'tool': name, 'result': str}
+                # Use full_result if available, else result (might be truncated)
+                result_json = tc.get("full_result", tc["result"])
                 import json
-                routing_data = json.loads(tc["result"])
+                routing_data = json.loads(result_json)
                 if routing_data.get("status") == "routed":
                     routed_worker = routing_data["routing"]["worker"]
                     routing_payload = routing_data["routing"]
@@ -138,8 +137,51 @@ async def chat_agent(body: ChatMessage):
         # Append Supervisor's response
         response_content += f"\n\n--- 🛡️ **Supervisor Analysis** ---\n{supervisor_result['response']}"
         
-        # Check if Supervisor approved something for Executor (Layer 3 Chaining)
-        # (This can be added later, but for now Layer 1->2 is critical)
+        # 4. Check for Executor Handoff (L2 -> L3)
+        # Look for "validate_trade_request" in supervisor's tool calls
+        sup_tools = supervisor_result.get("tool_calls", [])
+        approved_trade = None
+        
+        for stc in sup_tools:
+            if stc["tool"] == "validate_trade_request":
+                try:
+                    # Supervisor tool execution result is in stc["result"] (hopefully not truncated, or we need to fix Supervisor too)
+                    # SupervisorAgent doesn't truncate yet in its code, checking... 
+                    # SupervisorAgent.validate uses msg.content[:300] in tool_calls_made! 
+                    # We might need to fix SupervisorAgent too. But let's assume valid JSON for a moment or fix it.
+                    # WAIT: SupervisorAgent DOES truncate. I need to fix SupervisorAgent as well specifically for this.
+                    # For now, let's try to parse even if truncated (hash part might be missing)
+                    # Actually, better to fix SupervisorAgent.py first.
+                    pass 
+                except:
+                    pass
+
+        # Since I can't easily jump files mid-edit, I will implement the logic assuming I WILL fix SupervisorAgent next.
+        for stc in sup_tools:
+            if stc["tool"] == "validate_trade_request":
+                try:
+                    res_str = stc.get("full_result", stc["result"]) # Support full_result if I add it
+                    res_json = json.loads(res_str)
+                    
+                    if res_json.get("approved") and res_json.get("approval_token"):
+                        approved_trade = res_json["trade_plan"]
+                        approved_trade["approval_token"] = res_json["approval_token"]
+                        # Ensure defaults
+                        approved_trade.setdefault("lot_size", 1)
+                        approved_trade.setdefault("symbol_token", "")
+                except Exception as e:
+                    logging.error(f"Failed to parse confirmation: {e}")
+
+        if approved_trade:
+             logging.info(f"⚡ Auto-routing to Executor: {approved_trade['symbol']}")
+             
+             executor_result = await executor_agent.execute(
+                 request=f"Execute approved trade: {approved_trade['action']} {approved_trade['quantity']} {approved_trade['symbol']}",
+                 approved_plan=approved_trade,
+                 thread_id=body.thread_id
+             )
+             
+             response_content += f"\n\n--- ⚡ **Executor Action** ---\n{executor_result['response']}"
 
     return {
         "role": "ai",

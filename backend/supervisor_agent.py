@@ -633,7 +633,8 @@ For trade validation requests, output:
                                 )
                                 tool_calls_made.append({
                                     "tool": msg.name,
-                                    "result": msg.content[:300] + "..." if len(msg.content) > 300 else msg.content
+                                    "result": msg.content[:300] + "..." if len(msg.content) > 300 else msg.content,
+                                    "full_result": msg.content
                                 })
                     elif node_name == "supervisor":
                         update_agent_task(task_id, "🛡️ Supervisor deciding...", "running")
