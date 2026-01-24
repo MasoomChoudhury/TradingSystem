@@ -61,25 +61,15 @@ const SupervisorPanel: React.FC = () => {
             // Convert to ID-based set for deduplication if needed, but for now just replacing/merging
             // We want to combine local "chat" (manually sent) with "inter-agent" (automatic)
             // Simpler approach: Just display the inter-agent ones as the primary source of truth if we want "detailed conversation"
-            // However, the user might still want to chat manually.
-            // Let's prepend them or just map them.
-
             const mappedMessages: Message[] = conversation.reverse().map((msg: any) => ({
-                role: msg.from_agent === 'supervisor' ? 'ai' : 'user', // Orchestrator is 'user' from Supervisor's perspective
+                role: msg.from_agent === 'supervisor' ? 'ai' : 'user',
                 content: `**[${msg.from_agent} ${msg.message_type}]**\n${msg.content}`,
                 regimeStatus: msg.metadata?.regime_status
             }));
 
-            // In a real app we'd merge carefully to avoid overwriting ongoing manual chat
-            // For this requirements, showing the agent conversation is key.
-            // Let's setMessages to this mapped list IF no manual input is active? 
-            // Or better: Use a separate valid state variable for "agent_history" and display it mixed?
-            // User asked "all the chat... should be shown".
-            // I'll replace the state for now as the primary view.
-
             setMessages(mappedMessages);
         } catch (e) {
-            console.error("Failed to fetch supervisor conversation");
+            console.error("Failed to fetch supervisor history");
         }
     };
 
@@ -92,31 +82,26 @@ const SupervisorPanel: React.FC = () => {
             ws.onmessage = (event) => {
                 const msg = JSON.parse(event.data);
 
-                // Filter for Supervisor interactions
+                // Filter for ANY Supervisor interaction
                 if (msg.from_agent === 'supervisor' || msg.to_agent === 'supervisor') {
-                    // Check if Orchestrator interaction (for this tab)
-                    if (msg.from_agent === 'orchestrator' || msg.to_agent === 'orchestrator') {
-                        const mappedMsg: Message = {
-                            role: msg.from_agent === 'supervisor' ? 'ai' : 'user',
-                            content: `**[${msg.from_agent} ${msg.message_type}]**\n${msg.content}`,
-                            regimeStatus: msg.metadata?.regime_status
-                        };
+                    const mappedMsg: Message = {
+                        role: msg.from_agent === 'supervisor' ? 'ai' : 'user',
+                        content: `**[${msg.from_agent} ${msg.message_type}]**\n${msg.content}`,
+                        regimeStatus: msg.metadata?.regime_status
+                    };
 
-                        setMessages(prev => {
-                            // Simple dedupe by content/type since local messages don't have IDs
-                            // This is heuristic but sufficient for display
-                            const last = prev[prev.length - 1];
-                            if (last && last.content === mappedMsg.content) return prev;
-                            return [...prev, mappedMsg];
-                        });
-                    }
+                    setMessages(prev => {
+                        const last = prev[prev.length - 1];
+                        if (last && last.content === mappedMsg.content) return prev;
+                        return [...prev, mappedMsg];
+                    });
                 }
             };
         } catch (e) {
             console.error("WS Error", e);
         }
 
-        const interval = setInterval(fetchConversation, 10000); // Poll slower
+        const interval = setInterval(fetchConversation, 10000);
         return () => {
             clearInterval(interval);
             if (ws) ws.close();

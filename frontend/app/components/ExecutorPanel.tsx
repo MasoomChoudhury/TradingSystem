@@ -47,12 +47,13 @@ const ExecutorPanel: React.FC = () => {
 
     const fetchConversation = async () => {
         try {
-            const res = await fetch(`${API_BASE_URL}/api/comms/conversation?agent1=supervisor&agent2=executor&limit=20`);
+            // Fetch ALL history for Executor
+            const res = await fetch(`${API_BASE_URL}/api/comms/history?agent=executor&limit=50`);
             const data = await res.json();
             const conversation = data.messages || [];
 
             const mappedMessages: Message[] = conversation.reverse().map((msg: any) => ({
-                role: msg.from_agent === 'executor' ? 'ai' : 'user', // Supervisor is 'user' from Executor's perspective
+                role: msg.from_agent === 'executor' ? 'ai' : 'user',
                 content: `**[${msg.from_agent} ${msg.message_type}]**\n${msg.content}`
             }));
 
@@ -73,21 +74,18 @@ const ExecutorPanel: React.FC = () => {
             ws.onmessage = (event) => {
                 const msg = JSON.parse(event.data);
 
-                // Filter for Executor interactions
+                // Filter for ANY Executor interactions
                 if (msg.from_agent === 'executor' || msg.to_agent === 'executor') {
-                    // Check if Supervisor interaction (for this tab)
-                    if (msg.from_agent === 'supervisor' || msg.to_agent === 'supervisor') {
-                        const mappedMsg: Message = {
-                            role: msg.from_agent === 'executor' ? 'ai' : 'user',
-                            content: `**[${msg.from_agent} ${msg.message_type}]**\n${msg.content}`
-                        };
+                    const mappedMsg: Message = {
+                        role: msg.from_agent === 'executor' ? 'ai' : 'user',
+                        content: `**[${msg.from_agent} ${msg.message_type}]**\n${msg.content}`
+                    };
 
-                        setMessages(prev => {
-                            const last = prev[prev.length - 1];
-                            if (last && last.content === mappedMsg.content) return prev;
-                            return [...prev, mappedMsg];
-                        });
-                    }
+                    setMessages(prev => {
+                        const last = prev[prev.length - 1];
+                        if (last && last.content === mappedMsg.content) return prev;
+                        return [...prev, mappedMsg];
+                    });
                 }
 
                 // Also refresh status on any executor activity
@@ -109,7 +107,31 @@ const ExecutorPanel: React.FC = () => {
         };
     }, []); // Removed [messages] dependency to prevent infinite loops if we update messages in useEffect
 
-    // ... (rest of fetchStatus, getStatusColor, getPositionIcon)
+    const fetchStatus = async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/executor/status`);
+            const data = await res.json();
+            setStatus(data);
+        } catch (e) {
+            console.error("Failed to fetch executor status");
+        }
+    };
+
+    const getStatusColor = (s: string) => {
+        switch (s) {
+            case 'IDLE': return 'bg-gray-600/20 text-gray-400 border border-gray-600';
+            case 'ANALYZING': return 'bg-blue-900/40 text-blue-300 border border-blue-700';
+            case 'TRADING': return 'bg-green-900/40 text-green-300 border border-green-700';
+            case 'LOCKED': return 'bg-red-900/40 text-red-300 border border-red-700';
+            default: return 'bg-gray-700/50 text-gray-400';
+        }
+    };
+
+    const getPositionIcon = (side: string) => {
+        if (side === 'BUY' || side === 'LONG') return <TrendingUp size={14} className="text-green-400" />;
+        if (side === 'SELL' || side === 'SHORT') return <TrendingDown size={14} className="text-red-400" />;
+        return <Minus size={14} className="text-gray-400" />;
+    };
 
     const sendCommand = async (command: string) => {
         setIsLoading(true);
