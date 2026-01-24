@@ -254,8 +254,11 @@ def execute_approved_order(
     
     # Execute the order
     try:
-        from tools.openalgo_tools import get_openalgo_client
+        from tools.openalgo_tools import get_openalgo_client, add_ws_log
         client = get_openalgo_client()
+        
+        # Log request to frontend panel
+        add_ws_log("ORDER", f"Placing {trade['action']} order for {trade['symbol']}", trade)
         
         result = client.placeorder(
             symbol=trade["symbol"],
@@ -270,6 +273,12 @@ def execute_approved_order(
         
         order_id = result.get("orderid", result.get("order_id", ""))
         status = "executed" if order_id else "failed"
+        
+        # Log response to frontend panel
+        if order_id:
+            add_ws_log("ORDER", f"Order placed successfully: ID {order_id}", result)
+        else:
+            add_ws_log("ERROR", f"Order placement failed: {result}", result)
         
         # Log execution
         exec_log.log_execution(idempotency_key, approval_token, trade, order_id, status, result)
