@@ -1,5 +1,5 @@
 "use client";
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, WS_BASE_URL } from '../config';
 import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -85,8 +85,42 @@ const SupervisorPanel: React.FC = () => {
 
     useEffect(() => {
         fetchConversation();
-        const interval = setInterval(fetchConversation, 5000); // Poll every 5s
-        return () => clearInterval(interval);
+
+        let ws: WebSocket | null = null;
+        try {
+            ws = new WebSocket(`${WS_BASE_URL}/ws/comms`);
+            ws.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+
+                // Filter for Supervisor interactions
+                if (msg.from_agent === 'supervisor' || msg.to_agent === 'supervisor') {
+                    // Check if Orchestrator interaction (for this tab)
+                    if (msg.from_agent === 'orchestrator' || msg.to_agent === 'orchestrator') {
+                        const mappedMsg: Message = {
+                            role: msg.from_agent === 'supervisor' ? 'ai' : 'user',
+                            content: `**[${msg.from_agent} ${msg.message_type}]**\n${msg.content}`,
+                            regimeStatus: msg.metadata?.regime_status
+                        };
+
+                        setMessages(prev => {
+                            // Simple dedupe by content/type since local messages don't have IDs
+                            // This is heuristic but sufficient for display
+                            const last = prev[prev.length - 1];
+                            if (last && last.content === mappedMsg.content) return prev;
+                            return [...prev, mappedMsg];
+                        });
+                    }
+                }
+            };
+        } catch (e) {
+            console.error("WS Error", e);
+        }
+
+        const interval = setInterval(fetchConversation, 10000); // Poll slower
+        return () => {
+            clearInterval(interval);
+            if (ws) ws.close();
+        };
     }, []);
 
     const sendMessage = async () => {

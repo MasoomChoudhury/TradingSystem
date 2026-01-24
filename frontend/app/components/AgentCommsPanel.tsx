@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { MessageCircle, RefreshCw, ArrowRight, CheckCircle, XCircle, AlertTriangle, Eye } from 'lucide-react';
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, WS_BASE_URL } from '../config';
 
 interface AgentMessageData {
     id: string;
@@ -36,8 +36,41 @@ const AgentCommsPanel: React.FC = () => {
 
     useEffect(() => {
         fetchMessages();
-        const interval = setInterval(fetchMessages, 5000); // Poll every 5s
-        return () => clearInterval(interval);
+
+        // WebSocket setup for real-time updates
+        let ws: WebSocket | null = null;
+        try {
+            ws = new WebSocket(`${WS_BASE_URL}/ws/comms`);
+            ws.onopen = () => console.log("🔗 Connected to Agent Comms WebSocket");
+            ws.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+
+                // Check if we should ignore this message based on filter
+                if (filterAgent !== 'all') {
+                    if (msg.from_agent !== filterAgent && msg.to_agent !== filterAgent) {
+                        // Special handling for sub-agents if they are filtered by category?
+                        // For now strict filtering match.
+                        return;
+                    }
+                }
+
+                // Add to list (newest first)
+                setMessages(prev => {
+                    // Avoid duplicates if any
+                    if (prev.some(m => m.id === msg.id)) return prev;
+                    return [msg, ...prev];
+                });
+            };
+            ws.onclose = () => console.log("🔌 AGENT WS Disconnected");
+        } catch (e) {
+            console.error("WS Error", e);
+        }
+
+        const interval = setInterval(fetchMessages, 10000); // Poll less frequently (10s) as backup
+        return () => {
+            clearInterval(interval);
+            if (ws) ws.close();
+        };
     }, [filterAgent]);
 
     const getAgentColor = (agent: string) => {

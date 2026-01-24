@@ -1,5 +1,5 @@
 "use client";
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, WS_BASE_URL } from '../config';
 import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -66,11 +66,47 @@ const ExecutorPanel: React.FC = () => {
         scrollToBottom();
         fetchStatus();
         fetchConversation();
+
+        let ws: WebSocket | null = null;
+        try {
+            ws = new WebSocket(`${WS_BASE_URL}/ws/comms`);
+            ws.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+
+                // Filter for Executor interactions
+                if (msg.from_agent === 'executor' || msg.to_agent === 'executor') {
+                    // Check if Supervisor interaction (for this tab)
+                    if (msg.from_agent === 'supervisor' || msg.to_agent === 'supervisor') {
+                        const mappedMsg: Message = {
+                            role: msg.from_agent === 'executor' ? 'ai' : 'user',
+                            content: `**[${msg.from_agent} ${msg.message_type}]**\n${msg.content}`
+                        };
+
+                        setMessages(prev => {
+                            const last = prev[prev.length - 1];
+                            if (last && last.content === mappedMsg.content) return prev;
+                            return [...prev, mappedMsg];
+                        });
+                    }
+                }
+
+                // Also refresh status on any executor activity
+                if (msg.from_agent === 'executor' || msg.to_agent === 'executor') {
+                    fetchStatus();
+                }
+            };
+        } catch (e) {
+            console.error("WS Error", e);
+        }
+
         const interval = setInterval(() => {
             fetchStatus();
             fetchConversation();
-        }, 5000);
-        return () => clearInterval(interval);
+        }, 10000); // Poll slower
+        return () => {
+            clearInterval(interval);
+            if (ws) ws.close();
+        };
     }, []); // Removed [messages] dependency to prevent infinite loops if we update messages in useEffect
 
     // ... (rest of fetchStatus, getStatusColor, getPositionIcon)
