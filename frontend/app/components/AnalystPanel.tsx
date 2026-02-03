@@ -1,158 +1,157 @@
 "use client";
 import { API_BASE_URL } from '../config';
 import React, { useState, useEffect } from 'react';
-import { Eye, RefreshCw, TrendingUp, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { Eye, RefreshCw, Layers, Database, MessageSquare, BrainCircuit, Activity, BarChart2, DollarSign, Globe, Shield } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
-const AnalystPanel: React.FC = () => {
-    const [analysis, setAnalysis] = useState<any>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [chartUrl, setChartUrl] = useState<string | null>(null);
+const AgentTab = ({ label, icon: Icon, active, onClick }: any) => (
+    <button
+        onClick={onClick}
+        className={`flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-t-md transition-colors ${active
+            ? 'bg-[#252525] text-cyan-400 border-t border-x border-[#333]'
+            : 'text-gray-500 hover:text-gray-300 hover:bg-[#202020]'
+            }`}
+    >
+        <Icon size={12} />
+        {label}
+    </button>
+);
 
-    const fetchLatestAnalysis = async () => {
-        setIsLoading(true);
+const AnalystPanel: React.FC = () => {
+    const [trace, setTrace] = useState<any>(null);
+    const [finalReport, setFinalReport] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [activeTab, setActiveTab] = useState<string>('global_analyst');
+
+    // Polling for latest trace
+    const fetchLatestTrace = async () => {
         try {
-            const res = await fetch(`${API_BASE_URL}/api/analyst/latest`);
+            const res = await fetch(`${API_BASE_URL}/api/pipeline/latest`);
             const data = await res.json();
-            setAnalysis(data);
-            if (data.has_chart) {
-                // Force refresh image by appending timestamp
-                setChartUrl(`${API_BASE_URL}/api/analyst/chart?t=${Date.now()}`);
+            if (data.trace) {
+                setTrace(data.trace);
+                if (data.trace.global_analyst?.output) {
+                    setFinalReport(data.trace.global_analyst.output);
+                }
             }
         } catch (e) {
-            console.error("Failed to fetch analyst data", e);
+            console.error("Failed to fetch pipeline trace", e);
+        }
+    };
+
+    const triggerPipeline = async () => {
+        setIsLoading(true);
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/pipeline/run`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbol: "NIFTY" }) // Default for now
+            });
+            const data = await res.json();
+
+            if (data.trace) {
+                setTrace(data.trace);
+                setFinalReport(data.final_report);
+                setActiveTab('global_analyst');
+            }
+        } catch (e) {
+            console.error("Failed to trigger pipeline", e);
         } finally {
             setIsLoading(false);
         }
     };
 
-    const triggerAnalysis = async () => {
-        setIsLoading(true);
-        try {
-            await fetch(`${API_BASE_URL}/api/analyst/run`, { method: 'POST' });
-            // Poll for result after a few seconds
-            setTimeout(fetchLatestAnalysis, 5000);
-        } catch (e) {
-            console.error("Failed to trigger analysis", e);
-            setIsLoading(false);
-        }
-    };
-
     useEffect(() => {
-        fetchLatestAnalysis();
-        const interval = setInterval(fetchLatestAnalysis, 15000); // Poll every 15s
-        return () => clearInterval(interval);
+        fetchLatestTrace();
+        // Optional: Poll sparingly if running in background
+        // const interval = setInterval(fetchLatestTrace, 10000);
+        // return () => clearInterval(interval);
     }, []);
 
-    const getStatusColor = (rec: string) => {
-        switch (rec?.toUpperCase()) {
-            case 'KEEP': return 'text-green-400 border-green-800 bg-green-900/20';
-            case 'SWITCH': return 'text-yellow-400 border-yellow-800 bg-yellow-900/20';
-            case 'STOP': return 'text-red-400 border-red-800 bg-red-900/20';
-            default: return 'text-gray-400 border-gray-800 bg-gray-900/20';
-        }
+    const renderAgentContent = () => {
+        if (!trace || !activeTab) return <div className="p-4 text-gray-500 text-sm">No analysis data available. Run the pipeline.</div>;
+
+        const agentData = trace[activeTab];
+        if (!agentData) return <div className="p-4 text-gray-500 text-sm">No data for this agent yet.</div>;
+
+        return (
+            <div className="flex flex-col h-full overflow-hidden">
+                {/* Agent Header */}
+                <div className="p-3 bg-[#202020] border-b border-[#333] flex justify-between items-center">
+                    <span className="text-xs font-mono text-gray-400 uppercase">AGENT: {activeTab}</span>
+                    {agentData.error ? (
+                        <span className="text-xs text-red-400 flex items-center gap-1"><Shield size={10} /> Error</span>
+                    ) : (
+                        <span className="text-xs text-green-400 flex items-center gap-1"><BrainCircuit size={10} /> Completed</span>
+                    )}
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {/* INPUT SECTION */}
+                    <div className="space-y-2">
+                        <h4 className="text-xs font-bold text-gray-500 flex items-center gap-2">
+                            <Database size={12} /> INPUT CONTEXT
+                        </h4>
+                        <div className="bg-[#111] p-3 rounded border border-[#222] text-xs font-mono text-gray-400 overflow-x-auto max-h-[200px]">
+                            <pre>{JSON.stringify(agentData.inputs, null, 2)}</pre>
+                        </div>
+                    </div>
+
+                    {/* OUTPUT SECTION */}
+                    <div className="space-y-2">
+                        <h4 className="text-xs font-bold text-cyan-500 flex items-center gap-2">
+                            <MessageSquare size={12} /> AGENT RESPONSE
+                        </h4>
+                        {typeof agentData.output === 'string' ? (
+                            <div className="bg-[#1a1a2e] p-3 rounded border border-cyan-900/30 text-sm text-gray-200">
+                                <ReactMarkdown>{agentData.output}</ReactMarkdown>
+                            </div>
+                        ) : (
+                            <div className="bg-[#1a1a2e] p-3 rounded border border-cyan-900/30 text-xs font-mono text-cyan-100 overflow-x-auto">
+                                <pre>{JSON.stringify(agentData.output, null, 2)}</pre>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
     };
 
     return (
-        <div className="flex flex-col w-full h-full bg-[#1e1e1e] border border-gray-700 rounded-lg overflow-hidden">
-            {/* Header */}
-            <div className="p-3 bg-[#2d2d2d] border-b border-gray-700 flex justify-between items-center">
+        <div className="flex flex-col w-full h-full bg-[#151515] border border-gray-800 rounded-lg overflow-hidden">
+            {/* Main Header */}
+            <div className="p-3 bg-[#2d2d2d] border-b border-gray-700 flex justify-between items-center shrink-0">
                 <h3 className="text-sm font-semibold text-gray-200 flex items-center gap-2">
-                    <Eye size={16} className="text-cyan-400" /> Trading Eyes (Market Analyst)
+                    <Layers size={16} className="text-cyan-400" /> Commitee of Experts (10-Agent Pipeline)
                 </h3>
                 <button
-                    onClick={triggerAnalysis}
+                    onClick={triggerPipeline}
                     disabled={isLoading}
                     className="p-1.5 text-xs bg-cyan-900/30 text-cyan-400 border border-cyan-800 rounded hover:bg-cyan-900/50 flex items-center gap-1 transition-colors disabled:opacity-50"
                 >
                     <RefreshCw size={12} className={isLoading ? "animate-spin" : ""} />
-                    {isLoading ? "Analyzing..." : "Run Now"}
+                    {isLoading ? "Running Committee..." : "Run Analysis"}
                 </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {/* Recommendation Banner */}
-                {analysis && (
-                    <div className={`p-4 rounded-lg border-l-4 ${getStatusColor(analysis.recommendation)} bg-[#252525]`}>
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <h4 className="text-lg font-bold flex items-center gap-2">
-                                    {analysis.recommendation}
-                                    <span className="text-xs font-normal opacity-70 px-2 py-0.5 rounded bg-black/30">
-                                        {Math.round((analysis.confidence || 0) * 100)}% Confidence
-                                    </span>
-                                </h4>
-                                <p className="text-xs mt-1 opacity-70">
-                                    Last Updated: {new Date(analysis.timestamp).toLocaleTimeString()}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                )}
+            {/* Tabs Scroll Area */}
+            <div className="flex bg-[#1a1a1a] border-b border-[#333] shrink-0 overflow-x-auto no-scrollbar pt-2 px-2 gap-1">
+                <AgentTab label="Global Analyst" icon={BrainCircuit} active={activeTab === 'global_analyst'} onClick={() => setActiveTab('global_analyst')} />
+                <AgentTab label="Fundamentals" icon={Globe} active={activeTab === 'fundamentals'} onClick={() => setActiveTab('fundamentals')} />
+                <AgentTab label="Technicals" icon={BarChart2} active={activeTab === 'technicals'} onClick={() => setActiveTab('technicals')} />
+                <AgentTab label="News" icon={Globe} active={activeTab === 'news'} onClick={() => setActiveTab('news')} />
+                <AgentTab label="Sentiment" icon={MessageSquare} active={activeTab === 'sentiment'} onClick={() => setActiveTab('sentiment')} />
+                <AgentTab label="Institutional" icon={DollarSign} active={activeTab === 'institutional'} onClick={() => setActiveTab('institutional')} />
+                <AgentTab label="Options" icon={Activity} active={activeTab === 'options'} onClick={() => setActiveTab('options')} />
+                <AgentTab label="Vol Surface" icon={Activity} active={activeTab === 'vol_surface'} onClick={() => setActiveTab('vol_surface')} />
+                <AgentTab label="Liquidity" icon={Database} active={activeTab === 'liquidity'} onClick={() => setActiveTab('liquidity')} />
+                <AgentTab label="Correlation" icon={Layers} active={activeTab === 'correlation'} onClick={() => setActiveTab('correlation')} />
+                <AgentTab label="Patterns" icon={TrendingUp} active={activeTab === 'chart_pattern'} onClick={() => setActiveTab('chart_pattern')} />
+            </div>
 
-                {/* Chart Image */}
-                <div className="bg-black/40 rounded-lg border border-gray-800 overflow-hidden min-h-[200px] flex items-center justify-center relative">
-                    {chartUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={chartUrl} alt="Latest Analysis Chart" className="w-full h-auto object-contain" />
-                    ) : (
-                        <div className="text-gray-500 flex flex-col items-center gap-2">
-                            <TrendingUp size={32} className="opacity-20" />
-                            <span className="text-xs">No chart generated yet</span>
-                        </div>
-                    )}
-                </div>
-
-                {/* Observations */}
-                {analysis?.observations && (
-                    <div className="space-y-2">
-                        <h5 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Observations</h5>
-                        <ul className="space-y-1">
-                            {analysis.observations.map((obs: string, i: number) => (
-                                <li key={i} className="text-sm text-gray-300 flex items-start gap-2 bg-[#252525] p-2 rounded">
-                                    <span className="text-cyan-500 mt-1">•</span> {obs}
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
-
-                {/* Reasoning */}
-                {analysis?.reasoning && (
-                    <div className="space-y-2">
-                        <h5 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Visual Reasoning</h5>
-                        <div className="text-sm text-gray-300 bg-[#252525] p-3 rounded h-40 overflow-y-auto">
-                            <ReactMarkdown>{analysis.reasoning}</ReactMarkdown>
-                        </div>
-                    </div>
-                )}
-
-                {/* Input Context Snapshot */}
-                {analysis?.inputs && (
-                    <div className="space-y-3 pt-2 border-t border-gray-700">
-                        <h5 className="text-xs font-semibold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
-                            <TrendingUp size={12} /> Input Data Context (Snapshot)
-                        </h5>
-
-                        {/* Strategy Input */}
-                        <div className="bg-[#1a1a1a] p-2 rounded border border-gray-800">
-                            <span className="text-xs text-gray-500 block mb-1">Strategy Logic Feed</span>
-                            <div className="text-xs text-gray-300 font-mono">
-                                {analysis.inputs.strategy}
-                            </div>
-                        </div>
-
-                        {/* Recent Candles Input */}
-                        {analysis.inputs.market_data_summary && (
-                            <div className="bg-[#1a1a1a] p-2 rounded border border-gray-800 overflow-x-auto">
-                                <span className="text-xs text-gray-500 block mb-1">Numerical Feed (Last 5 Candles)</span>
-                                <pre className="text-[10px] text-gray-400 font-mono">
-                                    {JSON.stringify(analysis.inputs.market_data_summary, null, 2)}
-                                </pre>
-                            </div>
-                        )}
-                    </div>
-                )}
+            {/* Content Area */}
+            <div className="flex-1 min-h-0 relative">
+                {renderAgentContent()}
             </div>
         </div>
     );

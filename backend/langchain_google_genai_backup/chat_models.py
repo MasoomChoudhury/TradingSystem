@@ -57,9 +57,9 @@ from langchain_core.callbacks.manager import (
 from langchain_core.language_models import (
     LangSmithParams,
     LanguageModelInput,
-    ModelProfile,
-    ModelProfileRegistry,
-    is_openai_data_block,
+    # ModelProfile,
+    # ModelProfileRegistry,
+    # is_openai_data_block,
 )
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import (
@@ -127,7 +127,11 @@ _FUNCTION_CALL_THOUGHT_SIGNATURES_MAP_KEY = (
     "__gemini_function_call_thought_signatures__"
 )
 
-_MODEL_PROFILES = cast("ModelProfileRegistry", _PROFILES)
+_MODEL_PROFILES = cast("dict", _PROFILES)
+
+
+def is_openai_data_block(x: Any) -> bool:
+    return False
 
 
 def _handle_client_error(e: ClientError, request: dict[str, Any]) -> None:
@@ -145,7 +149,7 @@ def _handle_client_error(e: ClientError, request: dict[str, Any]) -> None:
     raise ChatGoogleGenerativeAIError(msg) from e
 
 
-def _get_default_model_profile(model_name: str) -> ModelProfile:
+def _get_default_model_profile(model_name: str) -> dict:
     default = _MODEL_PROFILES.get(model_name) or {}
     return default.copy()
 

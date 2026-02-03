@@ -598,6 +598,37 @@ async def toggle_analyzer_mode(mode: bool):
     except Exception as e:
         return {"status": "error", "error": str(e)}
 
+# ==================== PIPELINE (COMMITTEE) API ====================
+from multi_agent_pipeline import MultiAgentPipeline
+
+# Initialize Pipeline
+agent_pipeline = MultiAgentPipeline()
+
+# Simple trace store (in-memory)
+latest_pipeline_trace = {}
+
+class PipelineRunRequest(BaseModel):
+    symbol: str = "NIFTY"
+
+@app.post("/api/pipeline/run")
+async def run_pipeline(body: PipelineRunRequest):
+    """Run the full 10-agent committee pipeline."""
+    global latest_pipeline_trace
+    
+    # Run pipeline
+    result = await agent_pipeline.run_pipeline(body.symbol)
+    
+    # Store trace
+    if "trace" in result:
+        latest_pipeline_trace = result["trace"]
+        
+    return result
+
+@app.get("/api/pipeline/latest")
+async def get_latest_pipeline_trace():
+    """Get the full trace of the last pipeline run."""
+    return {"trace": latest_pipeline_trace}
+
 # ==================== TASK STATUS API ====================
 from task_tracker import get_task_tracker
 

@@ -13,8 +13,8 @@ import json
 import logging
 from typing import TypedDict, Annotated, Sequence, Optional, Literal
 from enum import Enum
-from dataclasses import dataclass, field
 from datetime import datetime
+from dataclasses import dataclass, field
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
@@ -176,13 +176,24 @@ class TradingGraphState(TypedDict):
 ALLOWED_TRANSITIONS = {
     # Orchestrator can go to workers or supervisor
     "orchestrator": ["market_data_worker", "indicators_worker", "options_worker", 
-                     "accounts_worker", "supervisor", "end"],
+                     "accounts_worker", "fundamentals_worker", "technicals_worker", "news_worker", "sentiment_worker", "institutional_worker", "options_analytics_worker", "vol_surface_worker", "liquidity_worker", "correlation_worker", "chart_pattern_worker", "supervisor", "end"],
     
     # Workers MUST return to orchestrator
     "market_data_worker": ["orchestrator"],
     "indicators_worker": ["orchestrator"],
     "options_worker": ["orchestrator"],
+    "options_worker": ["orchestrator"],
     "accounts_worker": ["orchestrator"],
+    "fundamentals_worker": ["orchestrator"],
+    "technicals_worker": ["orchestrator"],
+    "news_worker": ["orchestrator"],
+    "sentiment_worker": ["orchestrator"],
+    "institutional_worker": ["orchestrator"],
+    "options_analytics_worker": ["orchestrator"],
+    "vol_surface_worker": ["orchestrator"],
+    "liquidity_worker": ["orchestrator"],
+    "correlation_worker": ["orchestrator"],
+    "chart_pattern_worker": ["orchestrator"],
     
     # Supervisor can go to guards or emergency
     "supervisor": ["policy_guard", "risk_guard", "data_integrity_guard", 
@@ -429,6 +440,46 @@ def build_trading_graph() -> StateGraph:
     graph.add_node("options_worker", worker_node)
     graph.add_node("accounts_worker", worker_node)
     
+    # Fundamentals Agent
+    from fundamentals_agent import fundamentals_agent_node
+    graph.add_node("fundamentals_worker", fundamentals_agent_node)
+    
+    # Technicals Agent
+    from technicals_agent import technicals_agent_node
+    graph.add_node("technicals_worker", technicals_agent_node)
+
+    # News & Event Risk Agent
+    from news_agent import news_agent_node
+    graph.add_node("news_worker", news_agent_node)
+    
+    # Sentiment Agent
+    from sentiment_agent import sentiment_agent_node
+    graph.add_node("sentiment_worker", sentiment_agent_node)
+    
+    # Institutional Flow Agent
+    from institutional_agent import institutional_agent_node
+    graph.add_node("institutional_worker", institutional_agent_node)
+    
+    # Options Analytics Agent
+    from options_agent import options_agent_node
+    graph.add_node("options_analytics_worker", options_agent_node)
+    
+    # Vol Surface Agent
+    from vol_surface_agent import vol_surface_agent_node
+    graph.add_node("vol_surface_worker", vol_surface_agent_node)
+    
+    # Liquidity Constraints Agent
+    from liquidity_agent import liquidity_agent_node
+    graph.add_node("liquidity_worker", liquidity_agent_node)
+    
+    # Correlation Exposure Agent
+    from correlation_agent import correlation_agent_node
+    graph.add_node("correlation_worker", correlation_agent_node)
+    
+    # Chart Pattern Agent
+    from chart_pattern_agent import chart_pattern_agent_node
+    graph.add_node("chart_pattern_worker", chart_pattern_agent_node)
+    
     # Guards (validation path)
     graph.add_node("policy_guard", guard_node)
     graph.add_node("data_integrity_guard", guard_node)
@@ -453,13 +504,24 @@ def build_trading_graph() -> StateGraph:
             "indicators_worker": "indicators_worker",
             "options_worker": "options_worker",
             "accounts_worker": "accounts_worker",
+            "fundamentals_worker": "fundamentals_worker",
+            "technicals_worker": "technicals_worker",
+            "news_worker": "news_worker",
+            "sentiment_worker": "sentiment_worker",
+            "institutional_worker": "institutional_worker",
+            "options_analytics_worker": "options_analytics_worker",
+            "vol_surface_worker": "vol_surface_worker",
+            "liquidity_worker": "liquidity_worker",
+            "correlation_worker": "correlation_worker",
+            "chart_pattern_worker": "chart_pattern_worker",
             "supervisor": "supervisor",
             "end": END
         }
     )
     
     # Workers return to orchestrator
-    for worker in ["market_data_worker", "indicators_worker", "options_worker", "accounts_worker"]:
+    # Workers return to orchestrator
+    for worker in ["market_data_worker", "indicators_worker", "options_worker", "accounts_worker", "fundamentals_worker", "technicals_worker", "news_worker", "sentiment_worker", "institutional_worker", "options_analytics_worker", "vol_surface_worker", "liquidity_worker", "correlation_worker", "chart_pattern_worker"]:
         graph.add_edge(worker, "orchestrator")
     
     # Supervisor routing
@@ -554,6 +616,34 @@ def route_from_orchestrator(state: TradingGraphState) -> str:
         return "market_data_worker"
     elif "indicator" in str(state.get("messages", [])).lower():
         return "indicators_worker"
+    elif any(k in str(state.get("messages", [])).lower() for k in ["fundamental", "analysis", "thesis", "research"]):
+        return "fundamentals_worker"
+    elif any(k in str(state.get("messages", [])).lower() for k in ["technical", "chart", "trend", "levels", "support", "resistance"]):
+        return "technicals_worker"
+    elif any(k in str(state.get("messages", [])).lower() for k in ["news", "event", "risk", "rumor", "headline"]):
+        return "news_worker"
+    elif any(k in str(state.get("messages", [])).lower() for k in ["sentiment", "crowd", "mood", "narrative", "social"]):
+        return "sentiment_worker"
+    elif any(k in str(state.get("messages", [])).lower() for k in ["institutional", "flow", "fii", "dii", "smart money", "delivery", "block deal"]):
+        return "institutional_worker"
+    elif any(k in str(state.get("messages", [])).lower() for k in ["options", "greeks", "volatility", "straddle", "strangle", "spread", "delta", "gamma", "theta"]):
+        # Note: 'options_worker' is the data fetcher (chains). 'options_analytics_worker' is the quantitative analyst.
+        # For now, if keywords imply analysis ("greeks", "volatility", "strategy"), route to analyst.
+        # If keywords imply raw data ("chain", "price"), orchestrator might route to options_worker.
+        # We can bias towards analysis here if ambiguous.
+        if "data" not in str(state.get("messages", [])).lower() and "chain" not in str(state.get("messages", [])).lower():
+            return "options_analytics_worker"
+        return "options_worker" # Fallback to data fetcher if unsure
+    elif any(k in str(state.get("messages", [])).lower() for k in ["surface", "skew", "term structure", "relative value", "arb", "mispricing", "volatility surface"]):
+        return "vol_surface_worker"
+    elif any(k in str(state.get("messages", [])).lower() for k in ["liquidity", "slippage", "execution", "tradeable", "market depth", "bid ask", "spread cost"]):
+        return "liquidity_worker"
+    elif any(k in str(state.get("messages", [])).lower() for k in ["risk", "correlation", "exposure", "portfolio impact", "concentration", "beta", "hedging"]):
+        return "correlation_worker"
+    elif any(k in str(state.get("messages", [])).lower() for k in ["pattern", "flag", "pennant", "head and shoulders", "triangle", "wedge", "harmonic", "candlestick", "reversal"]):
+        # "trend" is handled by technicals, but specific patterns go here
+        return "chart_pattern_worker"
+
     
     return "end"
 

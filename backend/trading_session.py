@@ -376,6 +376,30 @@ OUTPUT STRICT JSON:
             self._save_session(self.current_session)
             logger.info("📊 Session resumed")
     
+    def update_risk_limits(self, max_lots: Optional[int] = None, max_daily_loss: Optional[float] = None) -> dict:
+        """Update risk limits for the current session."""
+        if not self.current_session:
+            return {"status": "error", "message": "No active session"}
+            
+        updated = False
+        if max_lots is not None:
+            self.current_session.risk_limits.max_lots = max_lots
+            updated = True
+        
+        if max_daily_loss is not None:
+            self.current_session.risk_limits.max_daily_loss = max_daily_loss
+            updated = True
+            
+        if updated:
+            self.current_session.updated_at = datetime.now().isoformat()
+            self._save_session(self.current_session)
+            logger.info(f"📊 Risk limits updated: Lots={self.current_session.risk_limits.max_lots}, Loss={self.current_session.risk_limits.max_daily_loss}")
+            
+        return {
+            "status": "success", 
+            "risk_limits": asdict(self.current_session.risk_limits)
+        }
+    
     def update_pnl(self, realized: float = 0, unrealized: float = 0):
         """Update session P&L."""
         if self.current_session:

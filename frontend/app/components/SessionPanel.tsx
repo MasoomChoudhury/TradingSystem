@@ -28,6 +28,8 @@ const SessionPanel: React.FC = () => {
     const [marketReport, setMarketReport] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [showReportInput, setShowReportInput] = useState(false);
+    const [isEditingRisk, setIsEditingRisk] = useState(false);
+    const [editRiskValues, setEditRiskValues] = useState({ max_lots: 1, max_daily_loss: 1500 });
 
     const fetchStatus = async () => {
         try {
@@ -198,12 +200,80 @@ const SessionPanel: React.FC = () => {
                         </div>
 
                         {/* Risk Limits */}
-                        {session.risk_limits && (
-                            <div className="text-[10px] text-gray-500 flex justify-between">
-                                <span>Max: {session.risk_limits.max_lots} lot</span>
-                                <span>Loss Limit: ₹{session.risk_limits.max_daily_loss}</span>
+                        <div className="bg-[#202020] p-2 rounded">
+                            <div className="flex justify-between items-center mb-1">
+                                <span className="text-xs text-gray-500">Risk Limits</span>
+                                {!isEditingRisk ? (
+                                    <button
+                                        onClick={() => {
+                                            setEditRiskValues({
+                                                max_lots: session.risk_limits?.max_lots || 1,
+                                                max_daily_loss: session.risk_limits?.max_daily_loss || 1500
+                                            });
+                                            setIsEditingRisk(true);
+                                        }}
+                                        className="text-[10px] text-blue-400 hover:text-blue-300"
+                                    >
+                                        Edit
+                                    </button>
+                                ) : (
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    await fetch(`${API_BASE_URL}/api/session/risk`, {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify(editRiskValues)
+                                                    });
+                                                    setIsEditingRisk(false);
+                                                    fetchStatus();
+                                                } catch (e) {
+                                                    console.error("Failed to update risk", e);
+                                                }
+                                            }}
+                                            className="text-[10px] text-green-400 hover:text-green-300"
+                                        >
+                                            Save
+                                        </button>
+                                        <button
+                                            onClick={() => setIsEditingRisk(false)}
+                                            className="text-[10px] text-gray-400 hover:text-gray-300"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                )}
                             </div>
-                        )}
+
+                            {!isEditingRisk ? (
+                                <div className="text-[10px] text-gray-500 flex justify-between">
+                                    <span>Max: {session.risk_limits?.max_lots || 1} lot</span>
+                                    <span>Loss Limit: ₹{session.risk_limits?.max_daily_loss || 1500}</span>
+                                </div>
+                            ) : (
+                                <div className="space-y-1">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="text-[10px] text-gray-500">Lots:</span>
+                                        <input
+                                            type="number"
+                                            value={editRiskValues.max_lots}
+                                            onChange={(e) => setEditRiskValues({ ...editRiskValues, max_lots: parseInt(e.target.value) })}
+                                            className="w-16 bg-[#1a1a1a] border border-gray-700 rounded px-1 py-0.5 text-[10px] text-white text-right"
+                                        />
+                                    </div>
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="text-[10px] text-gray-500">Loss (₹):</span>
+                                        <input
+                                            type="number"
+                                            value={editRiskValues.max_daily_loss}
+                                            onChange={(e) => setEditRiskValues({ ...editRiskValues, max_daily_loss: parseFloat(e.target.value) })}
+                                            className="w-16 bg-[#1a1a1a] border border-gray-700 rounded px-1 py-0.5 text-[10px] text-white text-right"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
 
                         {/* Action Buttons */}
                         <div className="flex gap-2 pt-2">

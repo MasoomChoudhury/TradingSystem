@@ -381,6 +381,15 @@ TOOL_KEYWORDS = {
     "circuit": ["trip_circuit_breaker", "reset_circuit_breaker", "get_circuit_breaker_status"],
     "close all": ["emergency_close_all_positions"],
     "cancel all": ["emergency_cancel_all_orders"],
+
+    # Fundamentals
+    "fundamental": ["fundamental_analysis"],
+    "thesis": ["fundamental_analysis"],
+    "research": ["fundamental_analysis"],
+    "balance sheet": ["fundamental_analysis"],
+    "earnings": ["fundamental_analysis"],
+    "revenue": ["fundamental_analysis"],
+    "profit": ["fundamental_analysis"],
 }
 
 
@@ -424,7 +433,15 @@ def get_worker_for_intent(intent: str) -> str:
         "greeks": "options",
         "fund": "accounts",
         "position": "accounts",
+        "fund": "accounts",
+        "position": "accounts",
         "margin": "accounts",
+        "fundamental": "fundamentals",
+        "thesis": "fundamentals",
+        "research": "fundamentals",
+        "balance": "fundamentals",
+        "earnings": "fundamentals",
+        "revenue": "fundamentals",
     }
     
     intent_lower = intent.lower()

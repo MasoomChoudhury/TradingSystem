@@ -11,3 +11,8 @@ httpx
 apscheduler
 openalgo
 python-dotenv
+duckduckgo-search
+langchain-community
+filetype
+
+google-genai
