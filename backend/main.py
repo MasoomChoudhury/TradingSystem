@@ -629,6 +629,33 @@ async def get_latest_pipeline_trace():
     """Get the full trace of the last pipeline run."""
     return {"trace": latest_pipeline_trace}
 
+# ==================== CONFIG & SCHEDULER API ====================
+from config_manager import ConfigManager
+from scheduler_service import SchedulerService
+
+# Initialize Scheduler
+scheduler = SchedulerService()
+
+@app.on_event("startup")
+async def startup_event():
+    """Start the scheduler background task on startup."""
+    # Run in background to not block startup
+    asyncio.create_task(scheduler.start())
+
+@app.get("/api/config")
+async def get_config():
+    """Get current configuration."""
+    return ConfigManager.load_config()
+
+class ConfigUpdate(BaseModel):
+    active_symbol: str
+
+@app.post("/api/config")
+async def update_config(body: ConfigUpdate):
+    """Update active symbol."""
+    ConfigManager.set_active_symbol(body.active_symbol)
+    return {"status": "success", "active_symbol": body.active_symbol}
+
 # ==================== TASK STATUS API ====================
 from task_tracker import get_task_tracker
 
