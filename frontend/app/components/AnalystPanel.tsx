@@ -1,7 +1,7 @@
 "use client";
 import { API_BASE_URL } from '../config';
 import React, { useState, useEffect } from 'react';
-import { Eye, RefreshCw, Layers, Database, MessageSquare, BrainCircuit, Activity, BarChart2, DollarSign, Globe, Shield } from 'lucide-react';
+import { Eye, RefreshCw, Layers, Database, MessageSquare, BrainCircuit, Activity, BarChart2, DollarSign, Globe, Shield, TrendingUp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 const AgentTab = ({ label, icon: Icon, active, onClick }: any) => (
